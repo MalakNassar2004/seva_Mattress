@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app/routes/app_pages.dart';
-import 'app/theme/app_colors.dart';
+import 'app/routes/app_routes.dart';
+import 'app/theme/app_theme.dart';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const SevaApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SevaApp extends StatelessWidget {
+  const SevaApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -18,20 +19,13 @@ class MyApp extends StatelessWidget {
       designSize: const Size(393, 852),
       minTextAdapt: true,
       splitScreenMode: true,
-      builder: (_, child) {
+      builder: (_, _) {
         return GetMaterialApp(
+          title: 'Seva Mattress POS',
           debugShowCheckedModeBanner: false,
-          title: 'Seva Mattress',
-          theme: ThemeData(
-            primaryColor: AppColors.primaryBlue,
-            scaffoldBackgroundColor: AppColors.white,
-            textTheme: GoogleFonts.poppinsTextTheme(
-              Theme.of(context).textTheme,
-            ),
-            useMaterial3: true,
-          ),
-          initialRoute: AppPages.INITIAL,
-          getPages: AppPages.routes,
+          theme: AppTheme.light,
+          initialRoute: AppRoutes.splash,
+          getPages: AppPages.pages,
         );
       },
     );

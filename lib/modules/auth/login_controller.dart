@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:seva_mattress/modules/auth/pin_view.dart';
+import '../../app/routes/app_routes.dart';
 
 /// UI state only. Backend wiring is marked with TODO(backend).
 class LoginController extends GetxController {
@@ -26,12 +26,11 @@ class LoginController extends GetxController {
     // TODO(backend): call the sign-in API with
     // emailController.text and passwordController.text
     // TEMPORARY (design preview): always open the PIN screen.
-    Get.to(() => const PinView());
+    Get.toNamed(AppRoutes.pin);
   }
 
   void onForgotPasswordPressed() {
-    // TODO: replace with your route constant
-    Get.toNamed('/forgot-password');
+    Get.toNamed(AppRoutes.forgotPassword);
   }
 
   void onGoogleLoginPressed() {

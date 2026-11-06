@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:get/get.dart';
 
+import '../../app/routes/app_routes.dart';
+
 /// UI state only. Backend wiring is marked with TODO(backend).
 class PinController extends GetxController {
   static const int pinLength = 4;
@@ -40,7 +42,9 @@ class PinController extends GetxController {
     if (pin.value.length >= pinLength) return;
     pin.value += number;
     if (pin.value.length == pinLength) {
-      // TODO(backend): verify the PIN with pin.value
+      // TODO(backend): verify the PIN with pin.value first; only open the
+      // Owner shell when it is valid.
+      Get.offAllNamed(AppRoutes.owner);
     }
   }
 
@@ -49,7 +53,14 @@ class PinController extends GetxController {
     pin.value = pin.value.substring(0, pin.value.length - 1);
   }
 
-  void onChangeUserPressed() => Get.back();
+  void onChangeUserPressed() {
+    // PIN is normally opened from Login, so going back returns there.
+    if (Get.previousRoute == AppRoutes.login) {
+      Get.back();
+    } else {
+      Get.offAllNamed(AppRoutes.login);
+    }
+  }
 
   void onRequestOtpPressed() {
     if (secondsLeft.value > 0) return;

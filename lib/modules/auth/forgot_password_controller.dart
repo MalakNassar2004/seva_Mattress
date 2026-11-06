@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../app/routes/app_routes.dart';
+
 enum ResetStep { contact, otp, newPassword }
 
 enum ResetMethod { phone, google }
@@ -129,8 +131,7 @@ class ForgotPasswordController extends GetxController {
   void onResetPressed() {
     if (!canReset) return;
     // TODO(backend): send the new password (newPasswordController.text)
-    // TODO: replace with your route constant
-    Get.offAllNamed('/login');
+    Get.offAllNamed(AppRoutes.login);
   }
 
   // ---- navigation ----

@@ -24,6 +24,12 @@ class AppColors {
   // Status
   static const Color danger = Color(0xFFDC2626);
   static const Color success = Color(0xFF16A34A);
+  static const Color warning = Color(0xFFD97706);
+
+  // Status backgrounds (chips, thumbnails)
+  static const Color dangerBg = Color(0xFFFEE2E2);
+  static const Color successBg = Color(0xFFDCFCE7);
+  static const Color warningBg = Color(0xFFFEF3C7);
 
   // Shadows
   static const Color shadow = Color(0x14101828);
