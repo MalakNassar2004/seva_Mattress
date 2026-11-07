@@ -2,54 +2,29 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/data/services/auth_service.dart';
 
-enum ResetStep { contact, otp, newPassword }
+enum ResetStep { email, sent }
 
-enum ResetMethod { phone, google }
-
-/// UI flow only: contact -> 4-digit code -> new password.
-/// Backend wiring is marked with TODO(backend).
+/// Forgot-password flow (email only):
+/// 1) the employee types his email, 2) Firebase emails him a reset link.
+/// The new password is chosen on the page that link opens.
 class ForgotPasswordController extends GetxController {
-  static const int otpLength = 4;
   static const int resendSeconds = 60;
-  static const int minPasswordLength = 8;
 
-  final contactController = TextEditingController();
-  final newPasswordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
+  final _authService = AuthService();
 
-  final step = Rx<ResetStep>(ResetStep.contact);
-  final method = Rx<ResetMethod>(ResetMethod.phone);
-  final contactError = RxnString();
+  final emailController = TextEditingController();
 
-  final otp = ''.obs;
+  final step = Rx<ResetStep>(ResetStep.email);
+  final emailError = RxnString();
+  final isSending = false.obs;
   final secondsLeft = 0.obs;
 
-  final newPassword = ''.obs;
-  final confirmPassword = ''.obs;
-  final obscureNew = true.obs;
-  final obscureConfirm = true.obs;
-
   Timer? _timer;
+  String _lastSentTo = '';
 
-  @override
-  void onInit() {
-    super.onInit();
-    newPasswordController.addListener(
-          () => newPassword.value = newPasswordController.text,
-    );
-    confirmPasswordController.addListener(
-          () => confirmPassword.value = confirmPasswordController.text,
-    );
-  }
-
-  // ---- helpers used by the view ----
-  bool get isPhone => method.value == ResetMethod.phone;
-  bool get hasMinLength => newPassword.value.length >= minPasswordLength;
-  bool get passwordsMatch =>
-      confirmPassword.value.isNotEmpty &&
-          confirmPassword.value == newPassword.value;
-  bool get canReset => hasMinLength && passwordsMatch;
+  String get email => emailController.text.trim();
 
   String get timerText {
     final m = (secondsLeft.value ~/ 60).toString().padLeft(2, '0');
@@ -57,57 +32,10 @@ class ForgotPasswordController extends GetxController {
     return '$m:$s';
   }
 
-  // ---- step 1: choose method + enter contact ----
-  void selectMethod(ResetMethod m) {
-    method.value = m;
-    contactController.clear();
-    contactError.value = null;
-  }
-
-  void onSendCodePressed() {
-    final value = contactController.text.trim();
-
-    if (isPhone) {
-      final digits = value.replaceAll(RegExp(r'\D'), '');
-      if (digits.length < 7) {
-        contactError.value = 'Enter a valid phone number';
-        return;
-      }
-    } else if (!GetUtils.isEmail(value)) {
-      contactError.value = 'Enter a valid email address';
-      return;
-    }
-    contactError.value = null;
-
-    // TODO(backend): send a 4-digit code to the phone number / email in `value`
-    otp.value = '';
-    step.value = ResetStep.otp;
-    _startTimer();
-  }
-
-  // ---- step 2: enter the 4-digit code ----
-  void onNumberPressed(String number) {
-    if (otp.value.length >= otpLength) return;
-    otp.value += number;
-  }
-
-  void onDeletePressed() {
-    if (otp.value.isEmpty) return;
-    otp.value = otp.value.substring(0, otp.value.length - 1);
-  }
-
-  void onVerifyPressed() {
-    if (otp.value.length < otpLength) return;
-    // TODO(backend): verify the code (otp.value). Only continue when valid.
-    _timer?.cancel();
-    step.value = ResetStep.newPassword;
-  }
-
-  void onResendPressed() {
-    if (secondsLeft.value > 0) return;
-    // TODO(backend): send a new code
-    otp.value = '';
-    _startTimer();
+  @override
+  void onInit() {
+    super.onInit();
+    emailController.addListener(() => emailError.value = null);
   }
 
   void _startTimer() {
@@ -122,29 +50,65 @@ class ForgotPasswordController extends GetxController {
     });
   }
 
-  // ---- step 3: new password ----
-  void toggleObscureNew() => obscureNew.value = !obscureNew.value;
-  void toggleObscureConfirm() => obscureConfirm.value = !obscureConfirm.value;
-
-  void onResetPressed() {
-    if (!canReset) return;
-    // TODO(backend): send the new password (newPasswordController.text)
-    // TODO: replace with your route constant
-    Get.offAllNamed('/login');
+  /// Sends the reset email. Returns null on success, or an error message.
+  /// The same success result is returned whether or not the email is
+  /// registered, on purpose (nobody can discover which emails exist).
+  Future<String?> _send(String value) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    isSending.value = true;
+    final error = await _authService.sendPasswordReset(value);
+    isSending.value = false;
+    if (error == null) {
+      _lastSentTo = value;
+      _startTimer();
+    }
+    return error;
   }
 
-  // ---- navigation ----
+  Future<void> onSendPressed() async {
+    if (isSending.value) return; // ignore double taps
+
+    final value = email;
+    if (!GetUtils.isEmail(value)) {
+      emailError.value = 'Enter a valid email address';
+      return;
+    }
+    if (value == _lastSentTo && secondsLeft.value > 0) {
+      emailError.value =
+      'Please wait $timerText before requesting another link.';
+      return;
+    }
+
+    final error = await _send(value);
+    if (error != null) {
+      emailError.value = error;
+      return;
+    }
+    step.value = ResetStep.sent;
+  }
+
+  Future<void> onResendPressed() async {
+    if (secondsLeft.value > 0 || isSending.value) return;
+
+    final error = await _send(_lastSentTo);
+    Get.snackbar(
+      error == null ? 'Link sent' : 'Could not send',
+      error ?? 'We sent the reset link again.',
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+    );
+  }
+
+  void onBackToSignInPressed() => Get.back();
+
   void onBackPressed() {
     switch (step.value) {
-      case ResetStep.contact:
+      case ResetStep.email:
         Get.back();
         break;
-      case ResetStep.otp:
-        _timer?.cancel();
-        step.value = ResetStep.contact;
-        break;
-      case ResetStep.newPassword:
-        step.value = ResetStep.contact;
+      case ResetStep.sent:
+      // Go back to fix a typo in the email.
+        step.value = ResetStep.email;
         break;
     }
   }
@@ -152,7 +116,7 @@ class ForgotPasswordController extends GetxController {
   @override
   void onClose() {
     _timer?.cancel();
-    // The TextEditingControllers are intentionally NOT disposed here.
+    // The TextEditingController is intentionally NOT disposed here.
     // GetX deletes this controller while the page can still be on screen
     // (route transition / hot reload), and a TextField that rebuilds with a
     // disposed controller throws "used after being disposed".

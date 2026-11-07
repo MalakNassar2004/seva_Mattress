@@ -21,16 +21,21 @@ class LoginView extends GetView<LoginController> {
             child: Column(
               children: [
                 SizedBox(height: 25.h),
-                const BrandBadge(),
-                SizedBox(height: 18.h),
-                Text(
-                  'Terminal Sign In',
-                  style: TextStyle(
-                    fontSize: 24.sp,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textDark,
-                  ),
-                ),
+               Image.asset(
+  'assets/images/logo.png',
+  width: 170.w,
+  fit: BoxFit.contain,
+  filterQuality: FilterQuality.high,
+),
+SizedBox(height: 18.h),
+Text(
+  'Terminal Sign In',
+  style: TextStyle(
+    fontSize: 24.sp,
+    fontWeight: FontWeight.w800,
+    color: AppColors.textDark,
+  ),
+),
                 SizedBox(height: 6.h),
                 Text(
                   'Enter your authorized associate credentials to\nunlock POS floor operations',
@@ -92,7 +97,7 @@ class LoginView extends GetView<LoginController> {
             ),
           ),
           SizedBox(height: 15.h),
-          const FieldLabel(label: 'POS PIN / Password'),
+          const FieldLabel(label: 'Password'),
           Obx(
                 () => AppField(
               controller: controller.passwordController,

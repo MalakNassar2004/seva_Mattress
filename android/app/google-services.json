@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1067595078957",
+    "project_id": "seva-mattress-pos",
+    "storage_bucket": "seva-mattress-pos.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1067595078957:android:5ebee3b067f7a7983ac7a4",
+        "android_client_info": {
+          "package_name": "com.example.seva_mattress"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQ3QUa5g34TdVLbaEOR2rXTemq5JGPDTk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -44,14 +44,23 @@ class PinView extends GetView<PinController> {
                         _buildUserCard(),
                         SizedBox(height: 28.h),
                         Text(
-                          'Security PIN Required',
+                          'Verification Code',
                           style: TextStyle(
                             fontSize: 24.sp,
                             fontWeight: FontWeight.w800,
                             color: AppColors.deepBlue,
                           ),
                         ),
-                        SizedBox(height: 28.h),
+                        SizedBox(height: 8.h),
+                        Text(
+                          'Enter the 6-digit code we sent to your\nphone by SMS.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: AppColors.grey,
+                          ),
+                        ),
+                        SizedBox(height: 24.h),
                         _buildPinBoxes(),
                         SizedBox(height: 16.h),
                         _buildResendInfo(),
@@ -178,9 +187,9 @@ class PinView extends GetView<PinController> {
           final active = i == length;
           return AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            margin: EdgeInsets.symmetric(horizontal: 7.w),
-            width: 58.w,
-            height: 64.h,
+            margin: EdgeInsets.symmetric(horizontal: 4.w),
+            width: 48.w,
+            height: 60.h,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: AppColors.white,
@@ -269,7 +278,7 @@ class PinView extends GetView<PinController> {
                 ),
                 SizedBox(width: 6.w),
                 Text(
-                  'Request New OTP via SMS',
+                  'Request New pin via SMS',
                   style: TextStyle(
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w700,
