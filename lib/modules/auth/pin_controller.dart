@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:seva_mattress/data/services/otp_service.dart';
 import 'package:seva_mattress/modules/auth/app_lock_controller.dart';
+import '../../app/routes/app_routes.dart';
 
 /// OTP screen logic. SMS sending/verification goes through OtpService.
 class PinController extends GetxController {
@@ -115,8 +116,9 @@ class PinController extends GetxController {
     _timer?.cancel();
     // The Face ID lock starts only now, after the SMS code is verified.
     Get.find<AppLockController>().activate();
-    // TODO(home): open the home screen once it exists.
-    _showMessage('Verified', 'Code accepted. The home screen is coming next.');
+    // TODO(roles): open the screen that matches the employee's role
+    // (owner / manager / ...). For now everyone opens the Owner shell.
+    Get.offAllNamed(AppRoutes.owner);
   }
 
   /// "Change User": sign out and go back to the login screen.

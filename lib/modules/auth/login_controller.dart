@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:seva_mattress/data/services/app_lock_service.dart';
 import 'package:seva_mattress/data/services/auth_service.dart';
 import 'package:seva_mattress/modules/auth/app_lock_controller.dart';
-import 'package:seva_mattress/modules/auth/pin_view.dart';
+import '../../app/routes/app_routes.dart';
 
 /// Login screen logic. Firebase calls go through AuthService.
 class LoginController extends GetxController {
@@ -143,20 +143,15 @@ class LoginController extends GetxController {
     _onSignedIn();
   }
 
-  /// Shared by email and Google sign-in.
+  /// Shared by email and Google sign-in: go to the SMS code screen.
+  /// The Face ID lock is activated by the code screen after the code is
+  /// verified.
   void _onSignedIn() {
-    // TEMPORARY: the Face ID lock is activated here for testing.
-    // TODO(otp): move activate() to AFTER the SMS code is verified, so the
-    // user can leave the app to read the code without a Face ID prompt.
-    Get.find<AppLockController>().activate();
-
-    // Go to the PIN screen and remove login from the back stack.
-    Get.offAll(() => const PinView());
+    Get.offAllNamed(AppRoutes.pin);
   }
 
   void onForgotPasswordPressed() {
-    // TODO: replace with your route constant
-    Get.toNamed('/forgot-password');
+    Get.toNamed(AppRoutes.forgotPassword);
   }
 
   /// Face ID only unlocks an existing session. It never signs in by itself.
@@ -169,8 +164,7 @@ class LoginController extends GetxController {
     final result = await _appLockService.authenticate();
     switch (result) {
       case UnlockResult.success:
-        Get.find<AppLockController>().activate();
-        Get.offAll(() => const PinView());
+        Get.offAllNamed(AppRoutes.pin);
         break;
       case UnlockResult.unavailable:
         _showError('Face ID', 'Face ID is not available on this device.');

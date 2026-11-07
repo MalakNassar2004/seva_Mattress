@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// Global theme. Use it in GetMaterialApp: theme: AppTheme.light
@@ -7,9 +8,8 @@ class AppTheme {
 
   static ThemeData get light => ThemeData(
     useMaterial3: true,
-    // The design uses Inter. Add the font to pubspec (or google_fonts);
-    // if it is missing Flutter silently falls back to the default font.
-    fontFamily: 'Inter',
+    // The design uses Inter, loaded through google_fonts.
+    textTheme: GoogleFonts.interTextTheme(),
     scaffoldBackgroundColor: AppColors.background,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primaryBlue,

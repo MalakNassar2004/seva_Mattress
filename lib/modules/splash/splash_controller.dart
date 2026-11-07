@@ -3,11 +3,13 @@ import 'dart:io';
 
 import 'package:get/get.dart';
 
+import '../../app/routes/app_routes.dart';
+
 enum NetSpeed { checking, offline, slow, medium, fast }
 
 class SplashController extends GetxController {
   /// First route after the splash (login or home).
-  static const String nextRoute = '/login';
+  static const String nextRoute = AppRoutes.login;
 
   /// Lightweight URL used to measure connection latency (returns 204).
   static const String _probeUrl = 'https://www.gstatic.com/generate_204';

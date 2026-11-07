@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-// 1. استيراد الفايربيس وملف الإعدادات المتولد
+// استيراد الفايربيس وملف الإعدادات المتولد
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 import 'app/routes/app_pages.dart';
-import 'app/theme/app_colors.dart';
+import 'app/routes/app_routes.dart';
+import 'app/theme/app_theme.dart';
 import 'data/services/auth_service.dart';
 import 'modules/auth/app_lock_controller.dart';
 
@@ -19,10 +19,8 @@ import 'modules/auth/app_lock_controller.dart';
 const bool kRequireLoginOnLaunch = false;
 
 void main() async {
-  // 2. ضمان تجهيز الـ Bindings قبل العمليات اللاتزامنية
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 3. تهيئة الفايربيس
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -34,11 +32,11 @@ void main() async {
   // قفل التطبيق بالـ Face ID (يضل شغال طول عمر التطبيق)
   Get.put(AppLockController(), permanent: true);
 
-  runApp(const MyApp());
+  runApp(const SevaApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SevaApp extends StatelessWidget {
+  const SevaApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -46,20 +44,13 @@ class MyApp extends StatelessWidget {
       designSize: const Size(393, 852),
       minTextAdapt: true,
       splitScreenMode: true,
-      builder: (_, child) {
+      builder: (_, _) {
         return GetMaterialApp(
+          title: 'Seva Mattress POS',
           debugShowCheckedModeBanner: false,
-          title: 'Seva Mattress',
-          theme: ThemeData(
-            primaryColor: AppColors.primaryBlue,
-            scaffoldBackgroundColor: AppColors.white,
-            textTheme: GoogleFonts.poppinsTextTheme(
-              Theme.of(context).textTheme,
-            ),
-            useMaterial3: true,
-          ),
-          initialRoute: AppPages.INITIAL,
-          getPages: AppPages.routes,
+          theme: AppTheme.light,
+          initialRoute: AppRoutes.splash,
+          getPages: AppPages.pages,
         );
       },
     );
