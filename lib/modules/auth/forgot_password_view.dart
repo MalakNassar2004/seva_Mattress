@@ -11,8 +11,6 @@ class ForgotPasswordView extends GetView<ForgotPasswordController> {
 
   @override
   Widget build(BuildContext context) {
-    Get.put(ForgotPasswordController());
-
     return Scaffold(
       body: SoftBackground(
         child: SafeArea(

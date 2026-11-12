@@ -9,6 +9,7 @@ class PinController extends GetxController {
   static const int pinLength = 4;
   static const int resendSeconds = 60;
 
+  // ---------------- State ----------------
   final pin = ''.obs;
   final secondsLeft = resendSeconds.obs;
 
@@ -20,6 +21,13 @@ class PinController extends GetxController {
     _startTimer();
   }
 
+  @override
+  void onClose() {
+    _timer?.cancel();
+    super.onClose();
+  }
+
+  // Resend countdown (UI timer kept from the design).
   String get timerText {
     final m = (secondsLeft.value ~/ 60).toString().padLeft(2, '0');
     final s = (secondsLeft.value % 60).toString().padLeft(2, '0');
@@ -38,6 +46,10 @@ class PinController extends GetxController {
     });
   }
 
+  // ---------------- Mock data ----------------
+  // None.
+
+  // ---------------- Actions ----------------
   void onNumberPressed(String number) {
     if (pin.value.length >= pinLength) return;
     pin.value += number;
@@ -53,6 +65,13 @@ class PinController extends GetxController {
     pin.value = pin.value.substring(0, pin.value.length - 1);
   }
 
+  void onRequestOtpPressed() {
+    if (secondsLeft.value > 0) return;
+    // TODO(backend): request a new OTP via SMS.
+    _startTimer();
+  }
+
+  // ---------------- Navigation ----------------
   void onChangeUserPressed() {
     // PIN is normally opened from Login, so going back returns there.
     if (Get.previousRoute == AppRoutes.login) {
@@ -60,17 +79,5 @@ class PinController extends GetxController {
     } else {
       Get.offAllNamed(AppRoutes.login);
     }
-  }
-
-  void onRequestOtpPressed() {
-    if (secondsLeft.value > 0) return;
-    // TODO(backend): request a new OTP via SMS
-    _startTimer();
-  }
-
-  @override
-  void onClose() {
-    _timer?.cancel();
-    super.onClose();
   }
 }

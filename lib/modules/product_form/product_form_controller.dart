@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../products/product_item.dart';
+import 'product_form_mock.dart';
 
-/// UI state only. The same screen is used for Add and Edit:
-/// Edit starts with mock data, Add starts empty.
-/// Backend wiring is marked with TODO(backend).
+/// Add / Edit product. The same screen serves two routes (see
+/// ProductFormBinding): Edit starts with mock data, Add starts empty.
+/// UI state only. Backend wiring is marked with TODO(backend).
 class ProductFormController extends GetxController {
   ProductFormController({required this.isEdit});
 
   final bool isEdit;
 
+  // ---------------- State ----------------
   static const int maxPhotos = 5;
 
   static const Map<String, String> sizes = {
@@ -45,47 +47,45 @@ class ProductFormController extends GetxController {
     'Rate per sq ft',
   ];
 
-  // ---- text fields (not disposed on purpose, see Login controller note) ----
+  // ---------------- Mock data ----------------
+  // TODO(backend): load the product being edited instead of ProductFormMock.
+  // Text fields are not disposed on purpose (see the Login controller note).
   late final nameController =
-      TextEditingController(text: isEdit ? 'Seva Hybrid Luxury' : '');
+      TextEditingController(text: isEdit ? ProductFormMock.name : '');
   late final modelController =
-      TextEditingController(text: isEdit ? 'SV-HYB-2024' : '');
-  late final descriptionController = TextEditingController(
-    text: isEdit
-        ? 'Multi-layered organic latex and pocket coil hybrid mattress '
-            'engineered for temperature regulation and ergonomic spinal support.'
-        : '',
-  );
+      TextEditingController(text: isEdit ? ProductFormMock.model : '');
+  late final descriptionController =
+      TextEditingController(text: isEdit ? ProductFormMock.description : '');
   late final skuController =
-      TextEditingController(text: isEdit ? 'MAT-SEV-HYB-QN' : '');
+      TextEditingController(text: isEdit ? ProductFormMock.sku : '');
   late final retailController =
-      TextEditingController(text: isEdit ? '1,899.00' : '');
+      TextEditingController(text: isEdit ? ProductFormMock.retail : '');
   late final costController =
-      TextEditingController(text: isEdit ? '760.00' : '');
-  late final stockController = TextEditingController(text: isEdit ? '8' : '');
-  late final dimensionsController = TextEditingController(
-    text: isEdit ? 'Min: 28" × 50" — Max: 84" × 96"' : '',
-  );
+      TextEditingController(text: isEdit ? ProductFormMock.cost : '');
+  late final stockController =
+      TextEditingController(text: isEdit ? ProductFormMock.stock : '');
+  late final dimensionsController =
+      TextEditingController(text: isEdit ? ProductFormMock.dimensions : '');
 
-  // ---- selections ----
-  late final category = RxnString(isEdit ? 'Mattresses' : null);
+  late final category = RxnString(isEdit ? ProductFormMock.category : null);
   final selectedSize = 'Queen'.obs;
   late final customSizeEnabled = isEdit.obs;
   late final thicknesses =
-      (isEdit ? <String>['10" (Standard)'] : <String>[]).obs;
+      (isEdit ? List<String>.from(ProductFormMock.thicknesses) : <String>[])
+          .obs;
   late final cuts = (isEdit ? List<String>.from(cutOptions) : <String>[]).obs;
   late final pricingFormula =
-      RxnString(isEdit ? 'Surcharge + \$18.50 / sq ft' : null);
+      RxnString(isEdit ? ProductFormMock.pricingFormula : null);
   late final notesRequired = isEdit.obs;
   final isActive = true.obs;
-  late final photoCount = (isEdit ? 2 : 0).obs;
+  late final photoCount = (isEdit ? ProductFormMock.photoCount : 0).obs;
 
-  // ---- derived values ----
+  String get productCode => isEdit ? ProductFormMock.code : 'Auto';
+
+  // Margin chip (UI preview kept from the design, not business logic).
   final marginPercent = RxnDouble();
   final profit = RxnDouble();
   final stockUnits = RxnInt();
-
-  String get productCode => isEdit ? '4102' : 'Auto';
 
   @override
   void onInit() {
@@ -117,7 +117,7 @@ class ProductFormController extends GetxController {
   String get profitText =>
       profit.value == null ? '' : '+${formatMoney(profit.value!)} profit CAD';
 
-  // ---- actions ----
+  // ---------------- Actions ----------------
   void selectSize(String size) => selectedSize.value = size;
 
   void toggleThickness(String t) {
@@ -128,12 +128,15 @@ class ProductFormController extends GetxController {
     cuts.contains(c) ? cuts.remove(c) : cuts.add(c);
   }
 
+  void setActive(bool active) => isActive.value = active;
+
   void addPhoto() {
     // TODO(backend): open the image picker and upload the photo.
     if (photoCount.value < maxPhotos) photoCount.value++;
   }
 
   void removePhoto() {
+    // TODO(backend): delete the uploaded photo.
     if (photoCount.value > 0) photoCount.value--;
   }
 
@@ -142,11 +145,12 @@ class ProductFormController extends GetxController {
     // Cost price and inventory updates must be written to the owner audit log.
   }
 
+  void onHelpPressed() {
+    // TODO(backend): open the help content for this form.
+  }
+
+  // ---------------- Navigation ----------------
   void onDiscardPressed() => Get.back();
 
   void onBackPressed() => Get.back();
-
-  void onHelpPressed() {
-    // TODO: open help
-  }
 }

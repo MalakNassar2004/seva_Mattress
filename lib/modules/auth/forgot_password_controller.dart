@@ -16,6 +16,9 @@ class ForgotPasswordController extends GetxController {
   static const int resendSeconds = 60;
   static const int minPasswordLength = 8;
 
+  // ---------------- State ----------------
+  // The TextEditingControllers are intentionally NOT disposed (see the
+  // Login controller note).
   final contactController = TextEditingController();
   final newPasswordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
@@ -38,28 +41,50 @@ class ForgotPasswordController extends GetxController {
   void onInit() {
     super.onInit();
     newPasswordController.addListener(
-          () => newPassword.value = newPasswordController.text,
+      () => newPassword.value = newPasswordController.text,
     );
     confirmPasswordController.addListener(
-          () => confirmPassword.value = confirmPasswordController.text,
+      () => confirmPassword.value = confirmPasswordController.text,
     );
   }
 
-  // ---- helpers used by the view ----
+  @override
+  void onClose() {
+    _timer?.cancel();
+    super.onClose();
+  }
+
   bool get isPhone => method.value == ResetMethod.phone;
   bool get hasMinLength => newPassword.value.length >= minPasswordLength;
   bool get passwordsMatch =>
       confirmPassword.value.isNotEmpty &&
-          confirmPassword.value == newPassword.value;
+      confirmPassword.value == newPassword.value;
   bool get canReset => hasMinLength && passwordsMatch;
 
+  // Resend countdown (UI timer kept from the design).
   String get timerText {
     final m = (secondsLeft.value ~/ 60).toString().padLeft(2, '0');
     final s = (secondsLeft.value % 60).toString().padLeft(2, '0');
     return '$m:$s';
   }
 
-  // ---- step 1: choose method + enter contact ----
+  void _startTimer() {
+    _timer?.cancel();
+    secondsLeft.value = resendSeconds;
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (secondsLeft.value > 0) {
+        secondsLeft.value--;
+      } else {
+        t.cancel();
+      }
+    });
+  }
+
+  // ---------------- Mock data ----------------
+  // None.
+
+  // ---------------- Actions ----------------
+  // Step 1: choose method + enter contact.
   void selectMethod(ResetMethod m) {
     method.value = m;
     contactController.clear();
@@ -81,13 +106,13 @@ class ForgotPasswordController extends GetxController {
     }
     contactError.value = null;
 
-    // TODO(backend): send a 4-digit code to the phone number / email in `value`
+    // TODO(backend): send a 4-digit code to the phone number / email in `value`.
     otp.value = '';
     step.value = ResetStep.otp;
     _startTimer();
   }
 
-  // ---- step 2: enter the 4-digit code ----
+  // Step 2: enter the 4-digit code.
   void onNumberPressed(String number) {
     if (otp.value.length >= otpLength) return;
     otp.value += number;
@@ -107,34 +132,22 @@ class ForgotPasswordController extends GetxController {
 
   void onResendPressed() {
     if (secondsLeft.value > 0) return;
-    // TODO(backend): send a new code
+    // TODO(backend): send a new code.
     otp.value = '';
     _startTimer();
   }
 
-  void _startTimer() {
-    _timer?.cancel();
-    secondsLeft.value = resendSeconds;
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (secondsLeft.value > 0) {
-        secondsLeft.value--;
-      } else {
-        t.cancel();
-      }
-    });
-  }
-
-  // ---- step 3: new password ----
+  // Step 3: new password.
   void toggleObscureNew() => obscureNew.value = !obscureNew.value;
   void toggleObscureConfirm() => obscureConfirm.value = !obscureConfirm.value;
 
+  // ---------------- Navigation ----------------
   void onResetPressed() {
     if (!canReset) return;
-    // TODO(backend): send the new password (newPasswordController.text)
+    // TODO(backend): send the new password (newPasswordController.text).
     Get.offAllNamed(AppRoutes.login);
   }
 
-  // ---- navigation ----
   void onBackPressed() {
     switch (step.value) {
       case ResetStep.contact:
@@ -148,15 +161,5 @@ class ForgotPasswordController extends GetxController {
         step.value = ResetStep.contact;
         break;
     }
-  }
-
-  @override
-  void onClose() {
-    _timer?.cancel();
-    // The TextEditingControllers are intentionally NOT disposed here.
-    // GetX deletes this controller while the page can still be on screen
-    // (route transition / hot reload), and a TextField that rebuilds with a
-    // disposed controller throws "used after being disposed".
-    super.onClose();
   }
 }

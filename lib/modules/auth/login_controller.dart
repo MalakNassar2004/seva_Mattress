@@ -4,6 +4,12 @@ import '../../app/routes/app_routes.dart';
 
 /// UI state only. Backend wiring is marked with TODO(backend).
 class LoginController extends GetxController {
+  // ---------------- State ----------------
+  // The TextEditingControllers are intentionally NOT disposed.
+  // GetX deletes this controller while the page can still be on screen
+  // (route transition / hot reload), and a TextField that rebuilds with a
+  // disposed controller throws "used after being disposed".
+  // They hold no native resources, so they are simply garbage collected.
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
@@ -18,32 +24,29 @@ class LoginController extends GetxController {
     });
   }
 
+  // ---------------- Mock data ----------------
+  // None.
+
+  // ---------------- Actions ----------------
   void toggleObscure() => obscurePassword.value = !obscurePassword.value;
 
   void clearEmail() => emailController.clear();
 
+  void onGoogleLoginPressed() {
+    // TODO(backend): Google sign-in.
+  }
+
+  void onFaceIdPressed() {
+    // TODO(backend): Face ID / biometric auth.
+  }
+
+  // ---------------- Navigation ----------------
   void onLoginPressed() {
     // TODO(backend): call the sign-in API with
-    // emailController.text and passwordController.text
+    // emailController.text and passwordController.text.
     // TEMPORARY (design preview): always open the PIN screen.
     Get.toNamed(AppRoutes.pin);
   }
 
-  void onForgotPasswordPressed() {
-    Get.toNamed(AppRoutes.forgotPassword);
-  }
-
-  void onGoogleLoginPressed() {
-    // TODO(backend): Google sign-in
-  }
-
-  void onFaceIdPressed() {
-    // TODO(backend): Face ID / biometric auth
-  }
-
-// The TextEditingControllers are intentionally NOT disposed here.
-// GetX deletes this controller while the page can still be on screen
-// (route transition / hot reload), and a TextField that rebuilds with a
-// disposed controller throws "used after being disposed".
-// They hold no native resources, so they are simply garbage collected.
+  void onForgotPasswordPressed() => Get.toNamed(AppRoutes.forgotPassword);
 }

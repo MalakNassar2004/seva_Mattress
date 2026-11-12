@@ -17,6 +17,8 @@ void main() {
         AppRoutes.products,
         AppRoutes.productAdd,
         AppRoutes.productEdit,
+        AppRoutes.customers,
+        AppRoutes.customerDetail,
       ]),
     );
   });
