@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/data/repositories/product_repository.dart';
+import 'package:seva_mattress/data/services/session_service.dart';
 import '../products/product_item.dart';
 
-/// UI state only. The same screen is used for Add and Edit:
-/// Edit starts with mock data, Add starts empty.
-/// Backend wiring is marked with TODO(backend).
+/// The same screen is used for Add and Edit. Edit receives the product from
+/// the list (Get.arguments), Add starts empty. Saving goes through
+/// ProductRepository.
+///
+/// The cost price is OWNER ONLY: it is loaded and saved only when the signed
+/// in employee is the owner.
 class ProductFormController extends GetxController {
   ProductFormController({required this.isEdit});
 
@@ -45,47 +50,64 @@ class ProductFormController extends GetxController {
     'Rate per sq ft',
   ];
 
+  final _repo = ProductRepository();
+
+  /// The product being edited (passed from the list). Null when adding.
+  late final ProductItem? editing = _readEditing();
+
+  ProductItem? _readEditing() {
+    if (!isEdit) return null;
+    final args = Get.arguments;
+    return args is ProductItem ? args : null;
+  }
+
   // ---- text fields (not disposed on purpose, see Login controller note) ----
-  late final nameController =
-      TextEditingController(text: isEdit ? 'Seva Hybrid Luxury' : '');
+  late final nameController = TextEditingController(text: editing?.name ?? '');
   late final modelController =
-      TextEditingController(text: isEdit ? 'SV-HYB-2024' : '');
-  late final descriptionController = TextEditingController(
-    text: isEdit
-        ? 'Multi-layered organic latex and pocket coil hybrid mattress '
-            'engineered for temperature regulation and ergonomic spinal support.'
-        : '',
+  TextEditingController(text: editing?.model ?? '');
+  late final descriptionController =
+  TextEditingController(text: editing?.description ?? '');
+  late final skuController = TextEditingController(text: editing?.sku ?? '');
+  late final retailController = TextEditingController(
+    text: editing?.price.toStringAsFixed(2) ?? '',
   );
-  late final skuController =
-      TextEditingController(text: isEdit ? 'MAT-SEV-HYB-QN' : '');
-  late final retailController =
-      TextEditingController(text: isEdit ? '1,899.00' : '');
-  late final costController =
-      TextEditingController(text: isEdit ? '760.00' : '');
-  late final stockController = TextEditingController(text: isEdit ? '8' : '');
-  late final dimensionsController = TextEditingController(
-    text: isEdit ? 'Min: 28" × 50" — Max: 84" × 96"' : '',
-  );
+  // Filled in later, and only for the owner (see _loadPermissions).
+  final costController = TextEditingController();
+  late final stockController =
+  TextEditingController(text: editing?.units.toString() ?? '');
+  late final dimensionsController =
+  TextEditingController(text: editing?.dimensions ?? '');
 
   // ---- selections ----
-  late final category = RxnString(isEdit ? 'Mattresses' : null);
-  final selectedSize = 'Queen'.obs;
-  late final customSizeEnabled = isEdit.obs;
+  late final category = RxnString(editing?.category);
+  late final selectedSize = (editing?.size ?? 'Queen').obs;
+  late final customSizeEnabled = (editing?.customSize ?? false).obs;
   late final thicknesses =
-      (isEdit ? <String>['10" (Standard)'] : <String>[]).obs;
-  late final cuts = (isEdit ? List<String>.from(cutOptions) : <String>[]).obs;
-  late final pricingFormula =
-      RxnString(isEdit ? 'Surcharge + \$18.50 / sq ft' : null);
-  late final notesRequired = isEdit.obs;
-  final isActive = true.obs;
-  late final photoCount = (isEdit ? 2 : 0).obs;
+      List<String>.of(editing?.thicknesses ?? const <String>[]).obs;
+  late final cuts = List<String>.of(editing?.cuts ?? const <String>[]).obs;
+  late final pricingFormula = RxnString(editing?.pricingFormula);
+  late final notesRequired = (editing?.notesRequired ?? false).obs;
+  late final isActive = (editing?.isActive ?? true).obs;
+  late final photoCount = (editing?.photoUrls.length ?? 0).obs;
+
+  final isSaving = false.obs;
+
+  /// true only when the signed-in employee is the owner. The view should
+  /// hide the cost price field (and margin / profit) when this is false.
+  final canViewCost = false.obs;
+  bool _permissionsLoaded = false;
 
   // ---- derived values ----
   final marginPercent = RxnDouble();
   final profit = RxnDouble();
   final stockUnits = RxnInt();
 
-  String get productCode => isEdit ? '4102' : 'Auto';
+  /// Add: 'Auto'. Edit: the first characters of the product id.
+  String get productCode {
+    final id = editing?.id ?? '';
+    if (id.isEmpty) return 'Auto';
+    return (id.length > 6 ? id.substring(0, 6) : id).toUpperCase();
+  }
 
   @override
   void onInit() {
@@ -97,6 +119,24 @@ class ProductFormController extends GetxController {
     });
     _recalculate();
     stockUnits.value = int.tryParse(stockController.text.trim());
+    _loadPermissions();
+  }
+
+  /// Finds out who is signed in. Only the owner gets the saved cost price.
+  Future<void> _loadPermissions() async {
+    try {
+      final user = await SessionService().loadCurrentUser();
+      _permissionsLoaded = user != null;
+      canViewCost.value = user?.isOwner ?? false;
+
+      final id = editing?.id ?? '';
+      if (canViewCost.value && isEdit && id.isNotEmpty) {
+        final cost = await _repo.loadCost(id);
+        if (cost != null) costController.text = cost.toStringAsFixed(2);
+      }
+    } catch (_) {
+      _permissionsLoaded = false;
+    }
   }
 
   double? _parse(String text) =>
@@ -129,7 +169,9 @@ class ProductFormController extends GetxController {
   }
 
   void addPhoto() {
-    // TODO(backend): open the image picker and upload the photo.
+    // TODO(storage): open the image picker and upload the photo. Needs
+    // Cloud Storage (Blaze plan). For now this only changes the counter and
+    // photos are NOT saved.
     if (photoCount.value < maxPhotos) photoCount.value++;
   }
 
@@ -137,9 +179,110 @@ class ProductFormController extends GetxController {
     if (photoCount.value > 0) photoCount.value--;
   }
 
-  void onSavePressed() {
-    // TODO(backend): create (Add) or update (Edit) the product.
-    // Cost price and inventory updates must be written to the owner audit log.
+  String? _validationError() {
+    if (nameController.text.trim().isEmpty) {
+      return 'Product name is required.';
+    }
+    if (category.value == null) return 'Please choose a category.';
+
+    final retail = _parse(retailController.text);
+    if (retail == null || retail <= 0) return 'Enter a valid retail price.';
+
+    if (canViewCost.value) {
+      final costText = costController.text.trim();
+      if (costText.isNotEmpty && _parse(costText) == null) {
+        return 'Enter a valid cost price.';
+      }
+    }
+
+    final stock = int.tryParse(stockController.text.trim());
+    if (stock == null || stock < 0) {
+      return 'Enter the stock quantity (0 or more).';
+    }
+    return null;
+  }
+
+  Future<void> onSavePressed() async {
+    if (isSaving.value) return; // ignore double taps
+
+    // Without this check an owner could save while we still do not know who
+    // he is, and his cost price would be silently ignored.
+    if (!_permissionsLoaded) {
+      _showMessage(
+        'Please wait',
+        'Checking your permissions. If this keeps happening, check your '
+            'connection and reopen this screen.',
+      );
+      return;
+    }
+
+    final error = _validationError();
+    if (error != null) {
+      _showMessage('Check the form', error);
+      return;
+    }
+
+    final canEditCost = canViewCost.value;
+    final costText = costController.text.trim();
+    // Empty = "leave the saved cost as it is" (a saved cost cannot be erased).
+    final double? costPrice =
+    (canEditCost && costText.isNotEmpty) ? _parse(costText) : null;
+
+    // Photos and the cost price are not part of this map on purpose: photos
+    // are managed separately, and the cost price lives in its own
+    // owner-only document.
+    final data = <String, dynamic>{
+      'name': nameController.text.trim(),
+      'model': modelController.text.trim(),
+      'description': descriptionController.text.trim(),
+      'sku': skuController.text.trim(),
+      'category': category.value,
+      'retailPrice': _parse(retailController.text),
+      'units': int.parse(stockController.text.trim()),
+      'dimensions': dimensionsController.text.trim(),
+      'size': selectedSize.value,
+      'customSize': customSizeEnabled.value,
+      'thicknesses': thicknesses.toList(),
+      'cuts': cuts.toList(),
+      'pricingFormula': pricingFormula.value,
+      'notesRequired': notesRequired.value,
+      'isActive': isActive.value,
+    };
+
+    isSaving.value = true;
+    try {
+      if (isEdit) {
+        final id = editing?.id ?? '';
+        if (id.isEmpty) {
+          _showMessage(
+            'Cannot save',
+            'Open the product from the list to edit it.',
+          );
+          return;
+        }
+        await _repo.update(
+          id,
+          data,
+          costPrice: costPrice,
+          canEditCost: canEditCost,
+        );
+      } else {
+        await _repo.create(
+          data,
+          costPrice: costPrice,
+          canEditCost: canEditCost,
+        );
+      }
+
+      // Go back first, then show the message (a snackbar would otherwise
+      // be closed by Get.back()).
+      Get.back();
+      _showMessage('Saved', 'The product was saved.');
+    } catch (e) {
+      _showMessage('Could not save', describeError(e));
+    } finally {
+      isSaving.value = false;
+    }
   }
 
   void onDiscardPressed() => Get.back();
@@ -148,5 +291,14 @@ class ProductFormController extends GetxController {
 
   void onHelpPressed() {
     // TODO: open help
+  }
+
+  void _showMessage(String title, String message) {
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+    );
   }
 }
