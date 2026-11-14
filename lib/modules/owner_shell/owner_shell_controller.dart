@@ -26,4 +26,7 @@ class OwnerShellController extends GetxController {
   /// Temporary entry on the More tab placeholder.
   // TODO(design): remove when the More menu is designed.
   void onCustomersPressed() => Get.toNamed(AppRoutes.customers);
+  void onDeliveriesPressed() => Get.toNamed(AppRoutes.deliveries);
+  void onSuppliersPressed() => Get.toNamed(AppRoutes.suppliers);
+  void onPurchaseOrdersPressed() => Get.toNamed(AppRoutes.purchaseOrders);
 }

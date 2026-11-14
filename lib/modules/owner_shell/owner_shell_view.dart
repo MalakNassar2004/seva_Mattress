@@ -5,6 +5,7 @@ import '../../app/theme/app_colors.dart';
 import '../../app/widgets/app_widgets.dart';
 import '../../app/widgets/owner_bottom_nav.dart';
 import '../inventory/inventory_view.dart';
+import '../orders/orders_view.dart';
 import 'owner_shell_controller.dart';
 
 /// Owner app shell: five tabs kept alive in an IndexedStack, with the
@@ -34,10 +35,7 @@ class OwnerShellView extends GetView<OwnerShellController> {
                         name: 'Home',
                         icon: Icons.storefront_outlined,
                       ),
-                      const _PlaceholderTab(
-                        name: 'Orders',
-                        icon: Icons.receipt_long_outlined,
-                      ),
+                      const OrdersView(),
                       const InventoryView(),
                       const _PlaceholderTab(
                         name: 'Reports',
@@ -47,8 +45,12 @@ class OwnerShellView extends GetView<OwnerShellController> {
                       _PlaceholderTab(
                         name: 'More',
                         icon: Icons.more_horiz,
-                        actionLabel: 'Customers',
-                        onAction: controller.onCustomersPressed,
+                        actions: [
+                          ('Customers', controller.onCustomersPressed),
+                          ('Deliveries', controller.onDeliveriesPressed),
+                          ('Suppliers', controller.onSuppliersPressed),
+                          ('Purchase Orders', controller.onPurchaseOrdersPressed),
+                        ],
                       ),
                     ],
                   ),
@@ -73,14 +75,13 @@ class _PlaceholderTab extends StatelessWidget {
   const _PlaceholderTab({
     required this.name,
     required this.icon,
-    this.actionLabel,
-    this.onAction,
+    this.actions = const [],
   });
 
   final String name;
   final IconData icon;
-  final String? actionLabel;
-  final VoidCallback? onAction;
+  /// Links to pages that are already built: (label, onTap).
+  final List<(String, VoidCallback)> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -111,12 +112,12 @@ class _PlaceholderTab extends StatelessWidget {
                     color: AppColors.textDark,
                   ),
                 ),
-                if (actionLabel != null && onAction != null) ...[
-                  SizedBox(height: 12.h),
+                if (actions.isNotEmpty) SizedBox(height: 12.h),
+                for (final a in actions) ...[
                   TextButton(
-                    onPressed: onAction,
+                    onPressed: a.$2,
                     child: Text(
-                      '$actionLabel ›',
+                      '${a.$1} ›',
                       style: TextStyle(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w700,

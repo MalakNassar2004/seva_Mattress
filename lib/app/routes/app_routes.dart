@@ -21,4 +21,34 @@ abstract class AppRoutes {
   // ---------------- Customers ----------------
   static const String customers = '/customers';
   static const String customerDetail = '/customer-detail';
+
+  // ---------------- Orders & Quotes ----------------
+  // The Orders & Quotes list itself is the Orders tab of /owner.
+  /// arguments: OrderItem.
+  static const String orderDetail = '/order-detail';
+
+  /// arguments: 'order' | 'quote' (new) or a QuoteItem (edit).
+  static const String orderForm = '/order-form';
+
+  // ---------------- Deliveries ----------------
+  static const String deliveries = '/deliveries';
+
+  /// arguments: delivery id (String).
+  static const String deliveryDetail = '/delivery-detail';
+
+  // ---------------- Suppliers ----------------
+  static const String suppliers = '/suppliers';
+
+  /// arguments: supplier id (String).
+  static const String supplierDetail = '/supplier-detail';
+
+  /// arguments: supplier id (edit) or nothing (add).
+  static const String supplierForm = '/supplier-form';
+
+  // ---------------- Purchase Orders ----------------
+  /// arguments: a PO number to search for (optional).
+  static const String purchaseOrders = '/purchase-orders';
+
+  /// arguments: {'supplierId': id} or {'number': draft PO number}.
+  static const String poForm = '/po-form';
 }

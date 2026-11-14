@@ -25,4 +25,18 @@ class AppColorsExtra {
   static const Color panelGrey = Color(0xFFF6F8FB);
   static const Color panelBorder = Color(0xFFE3E8F0);
   static const Color segmentBg = Color(0xFFEBEEF3);
+
+  // Orders & Deliveries
+  static const Color orange = Color(0xFFEA580C);
+  static const Color orangeBg = Color(0xFFFFF1E6);
+  static const Color orangeBorder = Color(0xFFFDCB9E);
+
+  static const Color successSoft = Color(0xFFEAF8EF);
+  static const Color amberSoft = Color(0xFFFFF8E6);
+  static const Color amberText = Color(0xFFC2620A);
+
+  static const Color progressTrack = Color(0xFFE2E7EF);
+
+  // Toasts
+  static const Color toastDark = Color(0xFF141B2D);
 }

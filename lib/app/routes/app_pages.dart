@@ -6,12 +6,25 @@ import '../../modules/auth/pin_view.dart';
 import '../../modules/customers/customer_detail_view.dart';
 import '../../modules/customers/customers_binding.dart';
 import '../../modules/customers/customers_view.dart';
+import '../../modules/deliveries/deliveries_binding.dart';
+import '../../modules/deliveries/deliveries_view.dart';
+import '../../modules/deliveries/delivery_detail_view.dart';
+import '../../modules/orders/order_detail_view.dart';
+import '../../modules/orders/order_form_view.dart';
+import '../../modules/orders/orders_binding.dart';
 import '../../modules/owner_shell/owner_shell_binding.dart';
 import '../../modules/owner_shell/owner_shell_view.dart';
 import '../../modules/product_form/product_form_binding.dart';
 import '../../modules/product_form/product_form_view.dart';
 import '../../modules/products/products_binding.dart';
 import '../../modules/products/products_view.dart';
+import '../../modules/purchase_orders/po_form_view.dart';
+import '../../modules/purchase_orders/purchase_orders_binding.dart';
+import '../../modules/purchase_orders/purchase_orders_view.dart';
+import '../../modules/suppliers/supplier_detail_view.dart';
+import '../../modules/suppliers/supplier_form_view.dart';
+import '../../modules/suppliers/suppliers_binding.dart';
+import '../../modules/suppliers/suppliers_view.dart';
 import '../../modules/splash/splash_binding.dart';
 import '../../modules/splash/splash_view.dart';
 import 'app_routes.dart';
@@ -89,6 +102,68 @@ class AppPages {
       name: AppRoutes.customerDetail,
       page: () => const CustomerDetailView(),
       binding: CustomerDetailBinding(),
+      transition: _transition,
+    ),
+
+    // ---------------- Orders & Quotes ----------------
+    GetPage(
+      name: AppRoutes.orderDetail,
+      page: () => const OrderDetailView(),
+      binding: OrderDetailBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.orderForm,
+      page: () => const OrderFormView(),
+      binding: OrderFormBinding(),
+      transition: _transition,
+    ),
+
+    // ---------------- Deliveries ----------------
+    GetPage(
+      name: AppRoutes.deliveries,
+      page: () => const DeliveriesView(),
+      binding: DeliveriesBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.deliveryDetail,
+      page: () => const DeliveryDetailView(),
+      binding: DeliveryDetailBinding(),
+      transition: _transition,
+    ),
+
+    // ---------------- Suppliers ----------------
+    GetPage(
+      name: AppRoutes.suppliers,
+      page: () => const SuppliersView(),
+      binding: SuppliersBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.supplierDetail,
+      page: () => const SupplierDetailView(),
+      binding: SupplierDetailBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.supplierForm,
+      page: () => const SupplierFormView(),
+      binding: SupplierFormBinding(),
+      transition: _transition,
+    ),
+
+    // ---------------- Purchase Orders ----------------
+    GetPage(
+      name: AppRoutes.purchaseOrders,
+      page: () => const PurchaseOrdersView(),
+      binding: PurchaseOrdersBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.poForm,
+      page: () => const PoFormView(),
+      binding: PoFormBinding(),
       transition: _transition,
     ),
   ];
