@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:seva_mattress/data/repositories/product_repository.dart';
 import 'package:seva_mattress/data/services/session_service.dart';
 import '../products/product_item.dart';
+import '../scanner/scanner_view.dart';
 
 /// Add / Edit product. The same screen serves two routes (see
 /// ProductFormBinding). Edit receives the product from the list
@@ -169,6 +170,14 @@ class ProductFormController extends GetxController {
   }
 
   void setActive(bool active) => isActive.value = active;
+
+  /// Scans a barcode with the camera and puts the text in the SKU field.
+  Future<void> onScanPressed() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final code = await ScannerView.scan();
+    if (code == null || code.trim().isEmpty) return;
+    skuController.text = code.trim();
+  }
 
   void addPhoto() {
     // TODO(storage): open the image picker and upload the photo. Needs

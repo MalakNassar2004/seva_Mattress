@@ -401,8 +401,17 @@ class ProductFormView extends GetView<ProductFormController> {
                   controller: controller.skuController,
                   hint: 'e.g. MAT-SEV-HYB-QN',
                   mono: true,
-                  suffix: Icon(Icons.qr_code_scanner,
-                      size: 20.sp, color: AppColors.grey),
+                  // Tapping the icon opens the camera scanner and fills the
+                  // SKU with the scanned barcode.
+                  suffix: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: controller.onScanPressed,
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 12.w),
+                      child: Icon(Icons.qr_code_scanner,
+                          size: 20.sp, color: AppColors.grey),
+                    ),
+                  ),
                 ),
                 SizedBox(height: 14.h),
                 Row(

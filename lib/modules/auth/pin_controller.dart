@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/data/repositories/product_repository.dart'
+    show describeError;
 import 'package:seva_mattress/data/services/otp_service.dart';
 import 'package:seva_mattress/data/services/session_service.dart';
 import 'package:seva_mattress/modules/auth/app_lock_controller.dart';
@@ -139,16 +141,32 @@ class PinController extends GetxController {
     final lock = Get.find<AppLockController>();
 
     AppUser? user;
-    try {
-      user = await SessionService().loadCurrentUser();
-    } catch (_) {
-      // Could not read the employee profile (usually no connection).
-      isBusy.value = false;
-      pin.value = '';
-      _startTimer();
+    Object? loadError;
+
+    // The profile read can fail on a weak connection: try a few times.
+    for (var attempt = 1; attempt <= 3; attempt++) {
+      try {
+        user = await SessionService().loadCurrentUser();
+        loadError = null;
+        break;
+      } catch (e) {
+        loadError = e;
+        debugPrint('loadCurrentUser failed (attempt $attempt): $e');
+        if (attempt < 3) {
+          await Future.delayed(const Duration(seconds: 2));
+        }
+      }
+    }
+
+    if (loadError != null) {
+      // Do not leave the employee stuck on this screen: go back to sign in.
+      await lock.signOutAndExit();
       _showMessage(
         'Connection problem',
-        'Could not load your account. Please try again.',
+        kDebugMode
+            ? describeError(loadError)
+            : 'Could not load your account. Check your internet connection '
+                'and sign in again.',
       );
       return;
     }
