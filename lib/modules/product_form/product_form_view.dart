@@ -9,13 +9,14 @@ import '../../app/theme/app_theme.dart';
 import '../../app/widgets/app_widgets.dart';
 import 'product_form_controller.dart';
 
-/// Add / Edit product. Same design for both:
-/// isEdit = true  -> prefilled (Edit Product)
-/// isEdit = false -> empty (Add Product)
+/// Add / Edit product. Same design for both routes:
+/// /product-edit -> prefilled (Edit Product)
+/// /product-add  -> empty (Add Product)
+/// The mode comes from ProductFormBinding through the controller.
 class ProductFormView extends GetView<ProductFormController> {
-  const ProductFormView({super.key, this.isEdit = true});
+  const ProductFormView({super.key});
 
-  final bool isEdit;
+  bool get isEdit => controller.isEdit;
 
   static const Color _labelColor = Color(0xFF374151);
   static const Color _panelBg = Color(0xFFF6F8FB);
@@ -23,8 +24,6 @@ class ProductFormView extends GetView<ProductFormController> {
 
   @override
   Widget build(BuildContext context) {
-    Get.put(ProductFormController(isEdit: isEdit));
-
     return Scaffold(
       body: SoftBackground(
         child: SafeArea(
@@ -810,13 +809,13 @@ class ProductFormView extends GetView<ProductFormController> {
                     label: 'Active on POS',
                     icon: Icons.visibility_outlined,
                     selected: controller.isActive.value,
-                    onTap: () => controller.isActive.value = true,
+                    onTap: () => controller.setActive(true),
                   ),
                   _segment(
                     label: 'Hidden / Archive',
                     icon: Icons.visibility_off_outlined,
                     selected: !controller.isActive.value,
-                    onTap: () => controller.isActive.value = false,
+                    onTap: () => controller.setActive(false),
                   ),
                 ],
               ),

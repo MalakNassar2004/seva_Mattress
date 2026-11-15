@@ -24,8 +24,6 @@ class PinView extends GetView<PinController> {
 
   @override
   Widget build(BuildContext context) {
-    Get.put(PinController());
-
     return Scaffold(
       body: SoftBackground(
         child: SafeArea(

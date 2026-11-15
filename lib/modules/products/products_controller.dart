@@ -4,13 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:seva_mattress/data/repositories/product_repository.dart';
 import '../../app/routes/app_routes.dart';
-import '../owner_shell/owner_shell_controller.dart';
+import '../owner_shell/owner_nav.dart';
 import 'product_item.dart';
 
-/// Products list. Data comes live from Firestore through ProductRepository.
+/// Products catalogue (/products, opened from the Inventory tab).
+/// Data comes live from Firestore through ProductRepository.
 class ProductsController extends GetxController {
+  // ---------------- State ----------------
   /// Kept only so the existing view still compiles. It does NOT follow the
-  /// real data: use [totalCount] instead.
+  /// real data: the real number is [totalCount].
   static const int totalSkus = 142;
 
   static const List<String> _categoryLabels = [
@@ -57,6 +59,12 @@ class ProductsController extends GetxController {
   void onInit() {
     super.onInit();
     _listen();
+  }
+
+  @override
+  void onClose() {
+    _sub?.cancel();
+    super.onClose();
   }
 
   void _listen() {
@@ -139,6 +147,7 @@ class ProductsController extends GetxController {
     products.assignAll(list);
   }
 
+  // ---------------- Actions ----------------
   void selectCategory(int index) {
     selectedCategory.value = index;
     _refresh();
@@ -155,24 +164,8 @@ class ProductsController extends GetxController {
   }
 
   void onFilterPressed() {
-    // TODO: open filters
+    // TODO(backend): open the filters (not designed yet) and apply them.
   }
-
-  /// Inside the Owner shell, Products is a tab (not a pushed route), so
-  /// going back switches to the Home tab instead of popping the root route.
-  void onBackPressed() {
-    if (Get.currentRoute == AppRoutes.owner &&
-        Get.isRegistered<OwnerShellController>()) {
-      Get.find<OwnerShellController>().changeTab(OwnerShellController.homeTab);
-    } else {
-      Get.back();
-    }
-  }
-
-  void onAddProductPressed() => Get.toNamed(AppRoutes.productAdd);
-
-  void onEditProduct(ProductItem product) =>
-      Get.toNamed(AppRoutes.productEdit, arguments: product);
 
   /// Soft delete: the product is hidden but past sales are kept.
   void deleteProduct(ProductItem product) {
@@ -188,6 +181,16 @@ class ProductsController extends GetxController {
     }
   }
 
+  // ---------------- Navigation ----------------
+  void onBackPressed() => Get.back();
+
+  void onAddProductPressed() => Get.toNamed(AppRoutes.productAdd);
+
+  void onEditProduct(ProductItem product) =>
+      Get.toNamed(AppRoutes.productEdit, arguments: product);
+
+  void onNavTap(int index) => OwnerNav.goToTab(index);
+
   void _showError(String title, String message) {
     Get.snackbar(
       title,
@@ -195,11 +198,5 @@ class ProductsController extends GetxController {
       snackPosition: SnackPosition.TOP,
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
     );
-  }
-
-  @override
-  void onClose() {
-    _sub?.cancel();
-    super.onClose();
   }
 }

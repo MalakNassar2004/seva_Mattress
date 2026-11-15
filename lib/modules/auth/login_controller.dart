@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:seva_mattress/data/services/app_lock_service.dart';
 import 'package:seva_mattress/data/services/auth_service.dart';
-import 'package:seva_mattress/modules/auth/app_lock_controller.dart';
 import '../../app/routes/app_routes.dart';
 
 /// Login screen logic. Firebase calls go through AuthService.
 class LoginController extends GetxController {
+  // ---------------- State ----------------
+  // The TextEditingControllers are intentionally NOT disposed.
+  // GetX deletes this controller while the page can still be on screen
+  // (route transition / hot reload), and a TextField that rebuilds with a
+  // disposed controller throws "used after being disposed".
+  // They hold no native resources, so they are simply garbage collected.
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
@@ -60,6 +65,7 @@ class LoginController extends GetxController {
     await onFaceIdPressed();
   }
 
+  // ---------------- Actions ----------------
   void toggleObscure() => obscurePassword.value = !obscurePassword.value;
 
   void clearEmail() => emailController.clear();
@@ -143,17 +149,6 @@ class LoginController extends GetxController {
     _onSignedIn();
   }
 
-  /// Shared by email and Google sign-in: go to the SMS code screen.
-  /// The Face ID lock is activated by the code screen after the code is
-  /// verified.
-  void _onSignedIn() {
-    Get.offAllNamed(AppRoutes.pin);
-  }
-
-  void onForgotPasswordPressed() {
-    Get.toNamed(AppRoutes.forgotPassword);
-  }
-
   /// Face ID only unlocks an existing session. It never signs in by itself.
   Future<void> onFaceIdPressed() async {
     if (_authService.currentUser == null) {
@@ -180,6 +175,14 @@ class LoginController extends GetxController {
     }
   }
 
+  // ---------------- Navigation ----------------
+  /// Shared by email and Google sign-in: go to the SMS code screen.
+  /// The Face ID lock is activated by the code screen after the code is
+  /// verified.
+  void _onSignedIn() => Get.offAllNamed(AppRoutes.pin);
+
+  void onForgotPasswordPressed() => Get.toNamed(AppRoutes.forgotPassword);
+
   void _showError(String title, String message) {
     Get.snackbar(
       title,
@@ -188,10 +191,4 @@ class LoginController extends GetxController {
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
     );
   }
-
-// The TextEditingControllers are intentionally NOT disposed here.
-// GetX deletes this controller while the page can still be on screen
-// (route transition / hot reload), and a TextField that rebuilds with a
-// disposed controller throws "used after being disposed".
-// They hold no native resources, so they are simply garbage collected.
 }

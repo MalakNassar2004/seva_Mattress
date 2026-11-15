@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/app/routes/app_routes.dart';
 import 'package:seva_mattress/data/services/app_lock_service.dart';
 import 'package:seva_mattress/data/services/auth_service.dart';
 import 'package:seva_mattress/modules/auth/lock_view.dart';
-import 'package:seva_mattress/modules/auth/login_view.dart';
 
 /// Locks the app with Face ID whenever it goes to the background
 /// (phone locked, switched to another app) while a session is active.
@@ -57,6 +57,7 @@ class AppLockController extends GetxController with WidgetsBindingObserver {
     _lockShown = true;
     _failedAttempts = 0;
     message.value = 'Use Face ID to continue.';
+    // The lock screen needs no binding: this controller is permanent.
     Get.to(
       () => const LockView(),
       transition: Transition.noTransition,
@@ -94,10 +95,11 @@ class AppLockController extends GetxController with WidgetsBindingObserver {
     }
   }
 
-  /// Signs out of Firebase and returns to the login screen.
+  /// Signs out of Firebase and returns to the login screen. It uses the
+  /// named route so the login binding registers the controller.
   Future<void> signOutAndExit() async {
     deactivate();
     await _authService.logout();
-    Get.offAll(() => const LoginView());
+    Get.offAllNamed(AppRoutes.login);
   }
 }

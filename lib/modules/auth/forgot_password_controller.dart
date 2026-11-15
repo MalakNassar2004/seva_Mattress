@@ -14,6 +14,9 @@ class ForgotPasswordController extends GetxController {
 
   final _authService = AuthService();
 
+  // ---------------- State ----------------
+  // The TextEditingController is intentionally NOT disposed (see the Login
+  // controller note).
   final emailController = TextEditingController();
 
   final step = Rx<ResetStep>(ResetStep.email);
@@ -26,6 +29,7 @@ class ForgotPasswordController extends GetxController {
 
   String get email => emailController.text.trim();
 
+  // Resend countdown.
   String get timerText {
     final m = (secondsLeft.value ~/ 60).toString().padLeft(2, '0');
     final s = (secondsLeft.value % 60).toString().padLeft(2, '0');
@@ -36,6 +40,12 @@ class ForgotPasswordController extends GetxController {
   void onInit() {
     super.onInit();
     emailController.addListener(() => emailError.value = null);
+  }
+
+  @override
+  void onClose() {
+    _timer?.cancel();
+    super.onClose();
   }
 
   void _startTimer() {
@@ -65,6 +75,7 @@ class ForgotPasswordController extends GetxController {
     return error;
   }
 
+  // ---------------- Actions ----------------
   Future<void> onSendPressed() async {
     if (isSending.value) return; // ignore double taps
 
@@ -99,6 +110,7 @@ class ForgotPasswordController extends GetxController {
     );
   }
 
+  // ---------------- Navigation ----------------
   void onBackToSignInPressed() => Get.back();
 
   void onBackPressed() {
@@ -111,15 +123,5 @@ class ForgotPasswordController extends GetxController {
         step.value = ResetStep.email;
         break;
     }
-  }
-
-  @override
-  void onClose() {
-    _timer?.cancel();
-    // The TextEditingController is intentionally NOT disposed here.
-    // GetX deletes this controller while the page can still be on screen
-    // (route transition / hot reload), and a TextField that rebuilds with a
-    // disposed controller throws "used after being disposed".
-    super.onClose();
   }
 }

@@ -4,9 +4,9 @@ import 'package:seva_mattress/data/repositories/product_repository.dart';
 import 'package:seva_mattress/data/services/session_service.dart';
 import '../products/product_item.dart';
 
-/// The same screen is used for Add and Edit. Edit receives the product from
-/// the list (Get.arguments), Add starts empty. Saving goes through
-/// ProductRepository.
+/// Add / Edit product. The same screen serves two routes (see
+/// ProductFormBinding). Edit receives the product from the list
+/// (Get.arguments), Add starts empty. Saving goes through ProductRepository.
 ///
 /// The cost price is OWNER ONLY: it is loaded and saved only when the signed
 /// in employee is the owner.
@@ -15,6 +15,7 @@ class ProductFormController extends GetxController {
 
   final bool isEdit;
 
+  // ---------------- State ----------------
   static const int maxPhotos = 5;
 
   static const Map<String, String> sizes = {
@@ -61,7 +62,7 @@ class ProductFormController extends GetxController {
     return args is ProductItem ? args : null;
   }
 
-  // ---- text fields (not disposed on purpose, see Login controller note) ----
+  // Text fields are not disposed on purpose (see the Login controller note).
   late final nameController = TextEditingController(text: editing?.name ?? '');
   late final modelController =
   TextEditingController(text: editing?.model ?? '');
@@ -78,7 +79,6 @@ class ProductFormController extends GetxController {
   late final dimensionsController =
   TextEditingController(text: editing?.dimensions ?? '');
 
-  // ---- selections ----
   late final category = RxnString(editing?.category);
   late final selectedSize = (editing?.size ?? 'Queen').obs;
   late final customSizeEnabled = (editing?.customSize ?? false).obs;
@@ -97,17 +97,17 @@ class ProductFormController extends GetxController {
   final canViewCost = false.obs;
   bool _permissionsLoaded = false;
 
-  // ---- derived values ----
-  final marginPercent = RxnDouble();
-  final profit = RxnDouble();
-  final stockUnits = RxnInt();
-
   /// Add: 'Auto'. Edit: the first characters of the product id.
   String get productCode {
     final id = editing?.id ?? '';
     if (id.isEmpty) return 'Auto';
     return (id.length > 6 ? id.substring(0, 6) : id).toUpperCase();
   }
+
+  // Margin chip (derived from the retail and cost prices).
+  final marginPercent = RxnDouble();
+  final profit = RxnDouble();
+  final stockUnits = RxnInt();
 
   @override
   void onInit() {
@@ -157,7 +157,7 @@ class ProductFormController extends GetxController {
   String get profitText =>
       profit.value == null ? '' : '+${formatMoney(profit.value!)} profit CAD';
 
-  // ---- actions ----
+  // ---------------- Actions ----------------
   void selectSize(String size) => selectedSize.value = size;
 
   void toggleThickness(String t) {
@@ -168,6 +168,8 @@ class ProductFormController extends GetxController {
     cuts.contains(c) ? cuts.remove(c) : cuts.add(c);
   }
 
+  void setActive(bool active) => isActive.value = active;
+
   void addPhoto() {
     // TODO(storage): open the image picker and upload the photo. Needs
     // Cloud Storage (Blaze plan). For now this only changes the counter and
@@ -176,6 +178,7 @@ class ProductFormController extends GetxController {
   }
 
   void removePhoto() {
+    // TODO(storage): delete the uploaded photo.
     if (photoCount.value > 0) photoCount.value--;
   }
 
@@ -285,13 +288,14 @@ class ProductFormController extends GetxController {
     }
   }
 
+  void onHelpPressed() {
+    // TODO(backend): open the help content for this form.
+  }
+
+  // ---------------- Navigation ----------------
   void onDiscardPressed() => Get.back();
 
   void onBackPressed() => Get.back();
-
-  void onHelpPressed() {
-    // TODO: open help
-  }
 
   void _showMessage(String title, String message) {
     Get.snackbar(

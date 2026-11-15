@@ -4,18 +4,19 @@ import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_theme.dart';
 import '../../app/widgets/app_widgets.dart';
+import '../../app/widgets/owner_bottom_nav.dart';
+import '../owner_shell/owner_shell_controller.dart';
 import 'product_item.dart';
 import 'products_controller.dart';
 
-/// Inventory tab of the Owner shell. The bottom navigation is drawn by the
-/// shell (OwnerShellView), not here.
+/// Products catalogue (/products), opened from the Inventory tab. It is a
+/// pushed route, so it draws the owner bottom navigation with Inventory
+/// selected.
 class ProductsView extends GetView<ProductsController> {
   const ProductsView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    Get.put(ProductsController());
-
     return Scaffold(
       body: SoftBackground(
         child: SafeArea(
@@ -54,6 +55,11 @@ class ProductsView extends GetView<ProductsController> {
                 ),
               ),
               _buildAddButton(),
+              OwnerBottomNav(
+                currentIndex: OwnerShellController.inventoryTab,
+                moreBadge: OwnerShellController.moreBadge,
+                onTap: controller.onNavTap,
+              ),
             ],
           ),
         ),

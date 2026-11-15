@@ -4,7 +4,8 @@ import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/widgets/app_widgets.dart';
 import '../../app/widgets/owner_bottom_nav.dart';
-import '../products/products_view.dart';
+import '../inventory/inventory_view.dart';
+import '../orders/orders_view.dart';
 import 'owner_shell_controller.dart';
 
 /// Owner app shell: five tabs kept alive in an IndexedStack, with the
@@ -14,8 +15,6 @@ class OwnerShellView extends GetView<OwnerShellController> {
 
   @override
   Widget build(BuildContext context) {
-    Get.put(OwnerShellController());
-
     return Obx(() {
       final index = controller.currentIndex.value;
       return PopScope(
@@ -31,23 +30,27 @@ class OwnerShellView extends GetView<OwnerShellController> {
                 Expanded(
                   child: IndexedStack(
                     index: index,
-                    children: const [
-                      _PlaceholderTab(
+                    children: [
+                      const _PlaceholderTab(
                         name: 'Home',
                         icon: Icons.storefront_outlined,
                       ),
-                      _PlaceholderTab(
-                        name: 'Orders',
-                        icon: Icons.receipt_long_outlined,
-                      ),
-                      ProductsView(),
-                      _PlaceholderTab(
+                      const OrdersView(),
+                      const InventoryView(),
+                      const _PlaceholderTab(
                         name: 'Reports',
                         icon: Icons.bar_chart_rounded,
                       ),
+                      // TODO(design): replace with the real More menu.
                       _PlaceholderTab(
                         name: 'More',
                         icon: Icons.more_horiz,
+                        actions: [
+                          ('Customers', controller.onCustomersPressed),
+                          ('Deliveries', controller.onDeliveriesPressed),
+                          ('Suppliers', controller.onSuppliersPressed),
+                          ('Purchase Orders', controller.onPurchaseOrdersPressed),
+                        ],
                       ),
                     ],
                   ),
@@ -66,12 +69,19 @@ class OwnerShellView extends GetView<OwnerShellController> {
   }
 }
 
-/// Temporary page for tabs whose screens are not built yet.
+/// Temporary page for tabs whose screens are not built yet. An optional
+/// button links to pages that are already built.
 class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({required this.name, required this.icon});
+  const _PlaceholderTab({
+    required this.name,
+    required this.icon,
+    this.actions = const [],
+  });
 
   final String name;
   final IconData icon;
+  /// Links to pages that are already built: (label, onTap).
+  final List<(String, VoidCallback)> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +112,20 @@ class _PlaceholderTab extends StatelessWidget {
                     color: AppColors.textDark,
                   ),
                 ),
+                if (actions.isNotEmpty) SizedBox(height: 12.h),
+                for (final a in actions) ...[
+                  TextButton(
+                    onPressed: a.$2,
+                    child: Text(
+                      '${a.$1} ›',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
