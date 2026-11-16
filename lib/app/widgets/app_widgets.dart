@@ -39,7 +39,7 @@ class SoftBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fade = _base.withOpacity(0.0);
+    final fade = _base.withValues(alpha: 0.0);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -187,7 +187,7 @@ class FieldLabel extends StatelessWidget {
               color: AppColors.textDark,
             ),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ],
       ),
     );
@@ -245,7 +245,7 @@ class AppField extends StatelessWidget {
               ),
             ),
           ),
-          if (suffix != null) suffix!,
+          ?suffix,
         ],
       ),
     );
@@ -273,7 +273,7 @@ class PrimaryArrowButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryBlue.withOpacity(0.28),
+            color: AppColors.primaryBlue.withValues(alpha: 0.28),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -308,7 +308,7 @@ class PrimaryArrowButton extends StatelessWidget {
                   height: 32.w,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.white.withOpacity(0.2),
+                    color: AppColors.white.withValues(alpha: 0.2),
                   ),
                   child: Icon(
                     Icons.arrow_forward,
@@ -348,7 +348,7 @@ class BrandBadge extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primaryBlue.withOpacity(0.25),
+                color: AppColors.primaryBlue.withValues(alpha: 0.25),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),

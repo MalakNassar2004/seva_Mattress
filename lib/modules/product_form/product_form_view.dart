@@ -63,7 +63,7 @@ class ProductFormView extends GetView<ProductFormController> {
     return Container(
       padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 10.h),
       decoration: BoxDecoration(
-        color: AppColors.white.withOpacity(0.55),
+        color: AppColors.white.withValues(alpha: 0.55),
         border: const Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Column(
@@ -160,7 +160,7 @@ class ProductFormView extends GetView<ProductFormController> {
                   decoration: BoxDecoration(
                     color: bg,
                     borderRadius: BorderRadius.circular(20.r),
-                    border: Border.all(color: fg.withOpacity(0.25)),
+                    border: Border.all(color: fg.withValues(alpha: 0.25)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -910,7 +910,7 @@ class ProductFormView extends GetView<ProductFormController> {
     return Container(
       padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 6.h),
       decoration: BoxDecoration(
-        color: AppColors.white.withOpacity(0.9),
+        color: AppColors.white.withValues(alpha: 0.9),
         border: const Border(top: BorderSide(color: AppColors.border)),
       ),
       child: Column(
@@ -922,7 +922,7 @@ class ProductFormView extends GetView<ProductFormController> {
               borderRadius: BorderRadius.circular(18.r),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primaryBlue.withOpacity(0.28),
+                  color: AppColors.primaryBlue.withValues(alpha: 0.28),
                   blurRadius: 16,
                   offset: const Offset(0, 8),
                 ),
@@ -956,7 +956,7 @@ class ProductFormView extends GetView<ProductFormController> {
                               'Syncing Surrey Floor Catalogue',
                               style: TextStyle(
                                 fontSize: 11.sp,
-                                color: AppColors.white.withOpacity(0.8),
+                                color: AppColors.white.withValues(alpha: 0.8),
                               ),
                             ),
                           ],
@@ -967,7 +967,7 @@ class ProductFormView extends GetView<ProductFormController> {
                         height: 34.w,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.white.withOpacity(0.2),
+                          color: AppColors.white.withValues(alpha: 0.2),
                         ),
                         child: Icon(Icons.arrow_forward,
                             size: 18.sp, color: AppColors.white),
@@ -1066,7 +1066,7 @@ class _SectionCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
           if (showDivider) ...[
@@ -1152,7 +1152,7 @@ class _Input extends StatelessWidget {
               ),
             ),
           ),
-          if (suffix != null) suffix!,
+          ?suffix,
         ],
       ),
     );
@@ -1326,7 +1326,7 @@ class _PhotoTile extends StatelessWidget {
                 ),
               ),
               child: Icon(Icons.bed_outlined,
-                  size: 34.sp, color: AppColors.white.withOpacity(0.8)),
+                  size: 34.sp, color: AppColors.white.withValues(alpha: 0.8)),
             ),
           ),
           Positioned(
@@ -1338,7 +1338,7 @@ class _PhotoTile extends StatelessWidget {
                 width: 22.w,
                 height: 22.w,
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.65),
+                  color: Colors.black.withValues(alpha: 0.65),
                   shape: BoxShape.circle,
                 ),
                 child:
@@ -1390,7 +1390,7 @@ class _AddPhotoTile extends StatelessWidget {
           width: 100.w,
           height: 94.h,
           decoration: BoxDecoration(
-            color: AppColors.lightBlue.withOpacity(0.35),
+            color: AppColors.lightBlue.withValues(alpha: 0.35),
             borderRadius: BorderRadius.circular(16.r),
           ),
           child: Column(

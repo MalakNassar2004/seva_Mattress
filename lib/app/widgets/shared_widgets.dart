@@ -381,7 +381,7 @@ class CardTitle extends StatelessWidget {
             ),
           ),
         ),
-        if (trailing != null) trailing!,
+        ?trailing,
       ],
     );
   }
@@ -651,7 +651,14 @@ class AuditNote extends StatelessWidget {
 
 /// Dark confirmation toast ("Inventory updated: +40 units ...").
 /// Shown at the bottom of the screen above everything else.
-void showDarkToast(String message, {String trailing = 'Just now'}) {
+/// [info] = neutral blue "i" icon instead of the green check (for notices
+/// such as "coming soon" that are not a completed action).
+void showDarkToast(
+  String message, {
+  String trailing = 'Just now',
+  bool info = false,
+}) {
+  final accent = info ? AppColorsExtra.infoBorder : AppColors.success;
   Get.showSnackbar(
     GetSnackBar(
       messageText: Row(
@@ -660,10 +667,14 @@ void showDarkToast(String message, {String trailing = 'Just now'}) {
             width: 22.w,
             height: 22.w,
             decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.25),
+              color: accent.withValues(alpha: 0.25),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.check, size: 14.sp, color: AppColors.success),
+            child: Icon(
+              info ? Icons.info_outline : Icons.check,
+              size: 14.sp,
+              color: accent,
+            ),
           ),
           SizedBox(width: 10.w),
           Expanded(

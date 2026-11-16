@@ -1,14 +1,23 @@
 import 'package:get/get.dart';
+import '../../modules/approvals/approvals_binding.dart';
+import '../../modules/approvals/approvals_view.dart';
 import '../../modules/auth/auth_binding.dart';
+import '../../modules/transactions/transaction_detail_view.dart';
+import '../../modules/transactions/transactions_binding.dart';
+import '../../modules/transactions/transactions_view.dart';
 import '../../modules/auth/forgot_password_view.dart';
 import '../../modules/auth/login_view.dart';
 import '../../modules/auth/pin_view.dart';
+import '../../modules/audit/audit_binding.dart';
+import '../../modules/audit/audit_view.dart';
 import '../../modules/customers/customer_detail_view.dart';
 import '../../modules/customers/customers_binding.dart';
 import '../../modules/customers/customers_view.dart';
 import '../../modules/deliveries/deliveries_binding.dart';
 import '../../modules/deliveries/deliveries_view.dart';
 import '../../modules/deliveries/delivery_detail_view.dart';
+import '../../modules/exports/exports_binding.dart';
+import '../../modules/exports/exports_view.dart';
 import '../../modules/orders/order_detail_view.dart';
 import '../../modules/orders/order_form_view.dart';
 import '../../modules/orders/orders_binding.dart';
@@ -21,10 +30,17 @@ import '../../modules/products/products_view.dart';
 import '../../modules/purchase_orders/po_form_view.dart';
 import '../../modules/purchase_orders/purchase_orders_binding.dart';
 import '../../modules/purchase_orders/purchase_orders_view.dart';
+import '../../modules/settings/approval_rules_view.dart';
+import '../../modules/settings/settings_binding.dart';
+import '../../modules/settings/settings_view.dart';
 import '../../modules/suppliers/supplier_detail_view.dart';
 import '../../modules/suppliers/supplier_form_view.dart';
 import '../../modules/suppliers/suppliers_binding.dart';
 import '../../modules/suppliers/suppliers_view.dart';
+import '../../modules/staff/permissions_view.dart';
+import '../../modules/staff/staff_binding.dart';
+import '../../modules/staff/staff_form_view.dart';
+import '../../modules/staff/staff_view.dart';
 import '../../modules/splash/splash_binding.dart';
 import '../../modules/splash/splash_view.dart';
 import 'app_routes.dart';
@@ -164,6 +180,72 @@ class AppPages {
       name: AppRoutes.poForm,
       page: () => const PoFormView(),
       binding: PoFormBinding(),
+      transition: _transition,
+    ),
+
+    // ---------------- Staff ----------------
+    GetPage(
+      name: AppRoutes.staff,
+      page: () => const StaffView(),
+      binding: StaffBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.staffForm,
+      page: () => const StaffFormView(),
+      binding: StaffFormBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.permissions,
+      page: () => const PermissionsView(),
+      binding: PermissionsBinding(),
+      transition: _transition,
+    ),
+
+    // ---------------- Control ----------------
+    GetPage(
+      name: AppRoutes.exports,
+      page: () => const ExportsView(),
+      binding: ExportsBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.auditLog,
+      page: () => const AuditView(),
+      binding: AuditBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.settings,
+      page: () => const SettingsView(),
+      binding: SettingsBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.approvalRules,
+      page: () => const ApprovalRulesView(),
+      binding: ApprovalRulesBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.approvals,
+      page: () => const ApprovalsView(),
+      binding: ApprovalsBinding(),
+      transition: _transition,
+    ),
+
+    // ---------------- Sales ----------------
+    GetPage(
+      name: AppRoutes.transactions,
+      page: () => const TransactionsView(),
+      binding: TransactionsBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.transactionDetail,
+      page: () => const TransactionDetailView(),
+      binding: TransactionDetailBinding(),
       transition: _transition,
     ),
   ];

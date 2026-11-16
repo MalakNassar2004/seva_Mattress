@@ -127,9 +127,9 @@ class _MeshBackground extends StatelessWidget {
           center: center,
           radius: radius,
           colors: [
-            color.withOpacity(opacity),
-            color.withOpacity(opacity * 0.45),
-            color.withOpacity(0.0),
+            color.withValues(alpha: opacity),
+            color.withValues(alpha: opacity * 0.45),
+            color.withValues(alpha: 0.0),
           ],
           stops: const [0.0, 0.5, 1.0],
         ),

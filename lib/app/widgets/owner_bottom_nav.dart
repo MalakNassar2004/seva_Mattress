@@ -47,7 +47,9 @@ class OwnerBottomNav extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               onTap: () => onTap(i),
               child: Container(
-                height: 52.h,
+                // Min height (not fixed) so large text sizes do not overflow.
+                constraints: BoxConstraints(minHeight: 52.h),
+                padding: EdgeInsets.symmetric(vertical: 4.h),
                 decoration: BoxDecoration(
                   color: active ? AppColors.lightBlue : Colors.transparent,
                   borderRadius: BorderRadius.circular(18.r),
@@ -90,6 +92,8 @@ class OwnerBottomNav extends StatelessWidget {
                     SizedBox(height: 2.h),
                     Text(
                       item.$2,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 10.5.sp,
                         fontWeight: active ? FontWeight.w800 : FontWeight.w500,

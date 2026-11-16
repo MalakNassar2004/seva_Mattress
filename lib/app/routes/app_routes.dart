@@ -51,4 +51,30 @@ abstract class AppRoutes {
 
   /// arguments: {'supplierId': id} or {'number': draft PO number}.
   static const String poForm = '/po-form';
+
+  // ---------------- Staff ----------------
+  static const String staff = '/staff';
+
+  /// arguments: staff id (edit) or nothing (add).
+  static const String staffForm = '/staff-form';
+
+  /// arguments: PermissionsArgs. Returns PermissionsResult when applied.
+  static const String permissions = '/permissions';
+
+  // ---------------- Control ----------------
+  // The More menu itself is the More tab of /owner.
+  static const String exports = '/exports';
+  static const String auditLog = '/audit-log';
+  static const String settings = '/settings';
+  static const String approvalRules = '/settings/approval-rules';
+
+  /// Pending / approved / rejected override requests.
+  static const String approvals = '/approvals';
+
+  // ---------------- Sales ----------------
+  // Home (dashboard) and Reports are tabs of /owner.
+  static const String transactions = '/transactions';
+
+  /// arguments: invoice number (String), e.g. 'SM-10482'.
+  static const String transactionDetail = '/transaction-detail';
 }

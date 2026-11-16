@@ -575,7 +575,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
                       'Freight elevator booking required with concierge.',
                       style: TextStyle(
                         fontSize: 11.5.sp,
-                        color: AppColors.primaryBlue.withOpacity(0.8),
+                        color: AppColors.primaryBlue.withValues(alpha: 0.8),
                       ),
                     ),
                   ],
@@ -666,7 +666,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
               style: TextStyle(
                 fontSize: 12.5.sp,
                 height: 1.45,
-                color: AppColors.textDark.withOpacity(0.85),
+                color: AppColors.textDark.withValues(alpha: 0.85),
               ),
             ),
           ),
@@ -795,7 +795,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
     return Container(
       padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 10.h),
       decoration: BoxDecoration(
-        color: AppColors.white.withOpacity(0.92),
+        color: AppColors.white.withValues(alpha: 0.92),
         border: const Border(top: BorderSide(color: AppColors.border)),
       ),
       child: Column(
@@ -807,7 +807,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
               borderRadius: BorderRadius.circular(28.r),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primaryBlue.withOpacity(0.28),
+                  color: AppColors.primaryBlue.withValues(alpha: 0.28),
                   blurRadius: 16,
                   offset: const Offset(0, 8),
                 ),
