@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/routes/app_routes.dart';
 import '../../app/widgets/page_widgets.dart';
-import '../../app/widgets/shared_widgets.dart';
 import '../staff/permissions_controller.dart';
 import '../staff/pick_staff_sheet.dart';
 import '../staff/staff_store.dart';
@@ -39,10 +38,7 @@ class MoreController extends GetxController {
     Get.toNamed(AppRoutes.permissions, arguments: PermissionsArgs(m));
   }
 
-  void onApprovals() {
-    // TODO(design): the Approvals queue screen is not designed yet.
-    showDarkToast('Approvals queue is coming soon', trailing: '', info: true);
-  }
+  void onApprovals() => Get.toNamed(AppRoutes.approvals);
 
   /// Locks the app and asks for a PIN (another employee can sign in).
   void onSwitchUser() => Get.offAllNamed(AppRoutes.pin);

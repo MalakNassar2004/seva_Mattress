@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/utils/dates.dart';
+import '../../app/widgets/page_widgets.dart';
 import '../../app/widgets/shared_widgets.dart';
 import '../audit/audit_models.dart';
 import '../audit/audit_store.dart';
@@ -62,15 +63,7 @@ class ExportsController extends GetxController {
       range.value = r;
       return;
     }
-    final ctx = Get.context;
-    if (ctx == null) return;
-    final now = DateTime.now();
-    final picked = await showDateRangePicker(
-      context: ctx,
-      firstDate: DateTime(now.year - 5),
-      lastDate: now,
-      initialDateRange: selectedRange,
-    );
+    final picked = await showDateRangeSheet(initial: selectedRange);
     if (picked == null) return;
     customRange.value = picked;
     range.value = ExportRange.custom;

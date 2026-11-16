@@ -9,6 +9,7 @@ enum AuditAction {
   permissionChange,
   export,
   stockAdjustment,
+  approval,
 }
 
 extension AuditActionInfo on AuditAction {
@@ -19,6 +20,7 @@ extension AuditActionInfo on AuditAction {
     AuditAction.permissionChange => 'Permissions',
     AuditAction.export => 'Exports',
     AuditAction.stockAdjustment => 'Stock adjustments',
+    AuditAction.approval => 'Approvals',
   };
 
   IconData get icon => switch (this) {
@@ -28,6 +30,7 @@ extension AuditActionInfo on AuditAction {
     AuditAction.permissionChange => Icons.admin_panel_settings_outlined,
     AuditAction.export => Icons.download_outlined,
     AuditAction.stockAdjustment => Icons.inventory_2_outlined,
+    AuditAction.approval => Icons.verified_user_outlined,
   };
 
   /// Colors of the old → new value chip: (text, background, border).

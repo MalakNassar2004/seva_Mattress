@@ -63,3 +63,16 @@ String formatDayHeader(DateTime d) {
   if (days == 1) return 'Yesterday — $day';
   return '${_weekdays[d.weekday - 1]}, ${formatDate(d)}';
 }
+
+/// "Just now" / "8m ago" / "2h ago" / "Yesterday" / "Oct 18"
+String formatAgo(DateTime d) {
+  final diff = DateTime.now().difference(d);
+  if (diff.inMinutes < 1) return 'Just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+  if (diff.inHours < 24 && dateOnly(d) == dateOnly(DateTime.now())) {
+    return '${diff.inHours}h ago';
+  }
+  final days = dateOnly(DateTime.now()).difference(dateOnly(d)).inDays;
+  if (days == 1) return 'Yesterday';
+  return formatShortDate(d);
+}

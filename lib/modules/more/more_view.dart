@@ -86,39 +86,44 @@ class MoreView extends GetView<MoreController> {
               ),
               SizedBox(height: 22.h),
               const SectionHeading('Control'),
-              MenuGroup(
-                tiles: [
-                  MenuTile(
-                    icon: Icons.verified_user_outlined,
-                    title: 'Approvals',
-                    subtitle: 'Discounts, refunds & voids waiting for you',
-                    trailing: const StatusPill(
-                      text: '${OwnerShellController.moreBadge} pending',
-                      fg: AppColors.white,
-                      bg: AppColors.danger,
-                      fontSize: 10.5,
+              Obx(
+                () => MenuGroup(
+                  tiles: [
+                    MenuTile(
+                      icon: Icons.verified_user_outlined,
+                      title: 'Approvals',
+                      subtitle: 'Discounts, refunds & voids waiting for you',
+                      trailing: OwnerShellController.moreBadge == 0
+                          ? null
+                          : StatusPill(
+                              text: '${OwnerShellController.moreBadge} pending',
+                              fg: AppColors.white,
+                              bg: AppColors.danger,
+                              fontSize: 10.5,
+                            ),
+                      onTap: controller.onApprovals,
                     ),
-                    onTap: controller.onApprovals,
-                  ),
-                  MenuTile(
-                    icon: Icons.download_outlined,
-                    title: 'Exports',
-                    subtitle: 'Sales, inventory & customer reports',
-                    onTap: controller.onExports,
-                  ),
-                  MenuTile(
-                    icon: Icons.history,
-                    title: 'Audit Log',
-                    subtitle: 'Read-only history of sensitive actions',
-                    onTap: controller.onAuditLog,
-                  ),
-                  MenuTile(
-                    icon: Icons.settings_outlined,
-                    title: 'Settings',
-                    subtitle: 'Store profile, taxes, payments, approval rules',
-                    onTap: controller.onSettings,
-                  ),
-                ],
+                    MenuTile(
+                      icon: Icons.download_outlined,
+                      title: 'Exports',
+                      subtitle: 'Sales, inventory & customer reports',
+                      onTap: controller.onExports,
+                    ),
+                    MenuTile(
+                      icon: Icons.history,
+                      title: 'Audit Log',
+                      subtitle: 'Read-only history of sensitive actions',
+                      onTap: controller.onAuditLog,
+                    ),
+                    MenuTile(
+                      icon: Icons.settings_outlined,
+                      title: 'Settings',
+                      subtitle:
+                          'Store profile, taxes, payments, approval rules',
+                      onTap: controller.onSettings,
+                    ),
+                  ],
+                ),
               ),
               SizedBox(height: 22.h),
               SizedBox(

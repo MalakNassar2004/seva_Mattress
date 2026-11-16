@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_colors_extra.dart';
 import '../../app/widgets/owner_widgets.dart';
+import '../../app/widgets/page_widgets.dart';
 import '../../app/widgets/shared_widgets.dart';
 import 'staff_mock.dart';
 import 'staff_models.dart';
@@ -33,7 +34,8 @@ class DeactivateStaffSheet extends StatelessWidget {
       footer: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _DangerButton(
+          DangerButton(
+            icon: Icons.person_off_outlined,
             label: 'Deactivate',
             onTap: () => Get.back(result: true),
           ),
@@ -295,63 +297,6 @@ class DeactivateStaffSheet extends StatelessWidget {
             'Historical sales, commissions and shifts remain in the audit log',
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Red filled button with an arrow, used for destructive confirmations.
-class _DangerButton extends StatelessWidget {
-  const _DangerButton({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 54.h,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.danger.withValues(alpha: 0.28),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Material(
-        color: AppColors.danger,
-        borderRadius: BorderRadius.circular(16.r),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16.r),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.person_off_outlined,
-                  size: 22.sp,
-                  color: AppColors.white,
-                ),
-                SizedBox(width: 10.w),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.white,
-                    ),
-                  ),
-                ),
-                Icon(Icons.arrow_forward, size: 20.sp, color: AppColors.white),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

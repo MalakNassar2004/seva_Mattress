@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import '../approvals/approvals_store.dart';
 
 /// Holds the selected tab of the Owner shell.
 class OwnerShellController extends GetxController {
@@ -14,9 +15,8 @@ class OwnerShellController extends GetxController {
       (Get.arguments is int ? Get.arguments as int : homeTab).obs;
 
   // ---------------- Mock data ----------------
-  /// Pending approvals shown on the More tab.
-  // TODO(backend): load the real pending approvals count.
-  static const int moreBadge = 3;
+  /// Pending approvals shown on the More tab badge.
+  static int get moreBadge => ApprovalsStore.to.pendingCount;
 
   // ---------------- Actions ----------------
   void changeTab(int index) => currentIndex.value = index;

@@ -1,5 +1,10 @@
 import 'package:get/get.dart';
+import '../../modules/approvals/approvals_binding.dart';
+import '../../modules/approvals/approvals_view.dart';
 import '../../modules/auth/auth_binding.dart';
+import '../../modules/transactions/transaction_detail_view.dart';
+import '../../modules/transactions/transactions_binding.dart';
+import '../../modules/transactions/transactions_view.dart';
 import '../../modules/auth/forgot_password_view.dart';
 import '../../modules/auth/login_view.dart';
 import '../../modules/auth/pin_view.dart';
@@ -221,6 +226,26 @@ class AppPages {
       name: AppRoutes.approvalRules,
       page: () => const ApprovalRulesView(),
       binding: ApprovalRulesBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.approvals,
+      page: () => const ApprovalsView(),
+      binding: ApprovalsBinding(),
+      transition: _transition,
+    ),
+
+    // ---------------- Sales ----------------
+    GetPage(
+      name: AppRoutes.transactions,
+      page: () => const TransactionsView(),
+      binding: TransactionsBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.transactionDetail,
+      page: () => const TransactionDetailView(),
+      binding: TransactionDetailBinding(),
       transition: _transition,
     ),
   ];

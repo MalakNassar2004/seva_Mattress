@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_colors_extra.dart';
 import '../theme/app_theme.dart';
+import 'app_widgets.dart';
+import 'owner_widgets.dart';
 import 'shared_widgets.dart';
 
 /// Page-level building blocks shared by every owner page, so titles,
@@ -923,4 +925,363 @@ Future<bool> showConfirmSheet({
     barrierColor: Colors.black54,
   );
   return result ?? false;
+}
+
+/// Grey placeholder block shown while a page loads (skeleton loading).
+class SkeletonBox extends StatelessWidget {
+  const SkeletonBox({
+    super.key,
+    this.height = 16,
+    this.width = double.infinity,
+    this.radius = 12,
+  });
+
+  final double height;
+  final double width;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.45, end: 1),
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.easeInOut,
+      builder: (_, v, _) => Opacity(
+        opacity: v,
+        child: Container(
+          width: width,
+          height: height.h,
+          decoration: BoxDecoration(
+            color: AppColorsExtra.segmentBg,
+            borderRadius: BorderRadius.circular(radius.r),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// White card filled with skeleton lines (placeholder for a whole card).
+class SkeletonCard extends StatelessWidget {
+  const SkeletonCard({super.key, this.lines = 3, this.height});
+
+  final int lines;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SkeletonBox(height: 12, width: 110.w),
+          SizedBox(height: 12.h),
+          if (height != null)
+            SkeletonBox(height: height!)
+          else
+            for (var i = 0; i < lines; i++) ...[
+              SkeletonBox(height: 14, width: i.isOdd ? 180.w : double.infinity),
+              SizedBox(height: 10.h),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Amber banner shown when the device is offline.
+class OfflineBanner extends StatelessWidget {
+  const OfflineBanner({super.key, this.onRetry});
+
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(14.w, 10.h, 8.w, 10.h),
+      decoration: BoxDecoration(
+        color: AppColorsExtra.warningSoft,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: AppColorsExtra.warningBorder),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off, size: 18.sp, color: AppColorsExtra.amber),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              'You are offline. Showing the last synced figures.',
+              style: TextStyle(
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w600,
+                color: AppColorsExtra.amber,
+              ),
+            ),
+          ),
+          if (onRetry != null)
+            TextButton(
+              onPressed: onRetry,
+              child: Text(
+                'Retry',
+                style: TextStyle(
+                  fontSize: 12.5.sp,
+                  fontWeight: FontWeight.w800,
+                  color: AppColorsExtra.amber,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Empty / no-results message with an icon and an optional button.
+class EmptyState extends StatelessWidget {
+  const EmptyState({
+    super.key,
+    required this.icon,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 32.h),
+      child: Column(
+        children: [
+          Container(
+            width: 64.w,
+            height: 64.w,
+            decoration: const BoxDecoration(
+              color: AppColors.lightBlue,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 28.sp, color: AppColors.primaryBlue),
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.grey,
+            ),
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            SizedBox(height: 12.h),
+            SoftButton(
+              label: actionLabel!,
+              height: 40,
+              radius: 12,
+              fg: AppColors.primaryBlue,
+              onTap: onAction!,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Bottom sheet with a calendar to pick a date range ("Custom" filters).
+/// Tap the first day, then the last day. Returns null when cancelled.
+Future<DateTimeRange?> showDateRangeSheet({DateTimeRange? initial}) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  DateTime? start = initial?.start;
+  DateTime? end = initial?.end;
+  return Get.bottomSheet<DateTimeRange>(
+    StatefulBuilder(
+      builder: (context, setState) {
+        String fmt(DateTime? d) => d == null
+            ? '—'
+            : MaterialLocalizations.of(context).formatMediumDate(d);
+        return SheetFrame(
+          footer: PrimaryArrowButton(
+            label: 'Apply range',
+            leadingIcon: Icons.date_range,
+            onPressed: () {
+              final s = start;
+              if (s == null) return;
+              Get.back(
+                result: DateTimeRange(start: s, end: end ?? s),
+              );
+            },
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Custom range',
+                      style: TextStyle(
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ),
+                  SheetCloseButton(onTap: Get.back),
+                ],
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                'Tap the first day, then the last day.',
+                style: TextStyle(fontSize: 12.5.sp, color: AppColors.grey),
+              ),
+              SizedBox(height: 12.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: StatusPill(
+                      text: 'From  ${fmt(start)}',
+                      fg: AppColors.deepBlue,
+                      bg: AppColors.lightBlue,
+                      fontSize: 12,
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: StatusPill(
+                      text: 'To  ${fmt(end)}',
+                      fg: AppColors.deepBlue,
+                      bg: AppColors.lightBlue,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              CalendarDatePicker(
+                initialDate: end ?? today,
+                firstDate: DateTime(today.year - 3),
+                lastDate: today,
+                onDateChanged: (d) => setState(() {
+                  final s = start;
+                  if (s == null || end != null || d.isBefore(s)) {
+                    start = d;
+                    end = null;
+                  } else {
+                    end = d;
+                  }
+                }),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: Colors.black54,
+  );
+}
+
+/// Red filled button with an arrow, used for destructive confirmations
+/// (Deactivate, Confirm refund, Void). [caption] = small line above label.
+class DangerButton extends StatelessWidget {
+  const DangerButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.icon,
+    this.caption,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final String? caption;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(minHeight: 54.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.r),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.danger.withValues(alpha: 0.28),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: AppColors.danger,
+        borderRadius: BorderRadius.circular(16.r),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16.r),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+            child: Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 22.sp, color: AppColors.white),
+                  SizedBox(width: 10.w),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (caption != null)
+                        Text(
+                          caption!.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            letterSpacing: 0.8,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.white.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 32.w,
+                  height: 32.w,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.white.withValues(alpha: 0.2),
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward,
+                    size: 18.sp,
+                    color: AppColors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

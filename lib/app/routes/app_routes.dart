@@ -67,4 +67,14 @@ abstract class AppRoutes {
   static const String auditLog = '/audit-log';
   static const String settings = '/settings';
   static const String approvalRules = '/settings/approval-rules';
+
+  /// Pending / approved / rejected override requests.
+  static const String approvals = '/approvals';
+
+  // ---------------- Sales ----------------
+  // Home (dashboard) and Reports are tabs of /owner.
+  static const String transactions = '/transactions';
+
+  /// arguments: invoice number (String), e.g. 'SM-10482'.
+  static const String transactionDetail = '/transaction-detail';
 }
