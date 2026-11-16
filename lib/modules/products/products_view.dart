@@ -39,7 +39,7 @@ class ProductsView extends GetView<ProductsController> {
                             (context, i) => Padding(
                               padding: EdgeInsets.only(bottom: 12.h),
                               child: _SwipeCard(
-                                key: ValueKey(items[i].sku),
+                                key: ValueKey(items[i].id),
                                 onEdit: () => controller.onEditProduct(items[i]),
                                 onDelete: () => _showDeleteSheet(items[i]),
                                 child: _buildCard(items[i]),
@@ -177,9 +177,11 @@ class ProductsView extends GetView<ProductsController> {
                 ),
               ),
               SizedBox(width: 6.w),
-              Text(
-                'Surrey Flagship Catalogue · ${ProductsController.totalSkus} SKUs',
-                style: TextStyle(fontSize: 11.sp, color: AppColors.grey),
+              Obx(
+                () => Text(
+                  'Surrey Flagship Catalogue · ${controller.totalCount.value} SKUs',
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.grey),
+                ),
               ),
             ],
           ),
@@ -195,7 +197,7 @@ class ProductsView extends GetView<ProductsController> {
               children: [
                 Obx(
                   () => Text(
-                    'Showing ${controller.products.length} of ${ProductsController.totalSkus} items',
+                    'Showing ${controller.products.length} of ${controller.totalCount.value} items',
                     style: TextStyle(fontSize: 11.sp, color: AppColors.grey),
                   ),
                 ),
@@ -243,6 +245,7 @@ class ProductsView extends GetView<ProductsController> {
           SizedBox(width: 10.w),
           Expanded(
             child: TextField(
+              controller: controller.searchController,
               onChanged: controller.onSearchChanged,
               style: TextStyle(fontSize: 14.sp, color: AppColors.textDark),
               decoration: InputDecoration(
@@ -254,7 +257,16 @@ class ProductsView extends GetView<ProductsController> {
               ),
             ),
           ),
-          Icon(Icons.qr_code_scanner, size: 22.sp, color: AppColors.grey),
+          // Scan a barcode to search for it.
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: controller.onScanPressed,
+            child: Padding(
+              padding: EdgeInsets.only(left: 8.w),
+              child: Icon(Icons.qr_code_scanner,
+                  size: 22.sp, color: AppColors.grey),
+            ),
+          ),
         ],
       ),
     );
@@ -544,7 +556,25 @@ class ProductsView extends GetView<ProductsController> {
     );
   }
 
+  /// Shown when the list is empty. Called inside the Obx of build(), so the
+  /// observables read here are tracked.
   Widget _buildEmpty() {
+    if (controller.isLoading.value) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 64.h),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final String message;
+    if (controller.loadError.value != null) {
+      message = 'Could not load products. Check your connection.';
+    } else if (controller.totalCount.value > 0) {
+      message = 'No products match your search.';
+    } else {
+      message = 'No products yet. Add your first product.';
+    }
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 48.h),
       child: Column(
@@ -561,7 +591,7 @@ class ProductsView extends GetView<ProductsController> {
           ),
           SizedBox(height: 16.h),
           Text(
-            'No products yet. Add your first product.',
+            message,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14.sp,

@@ -6,17 +6,25 @@ import '../../app/theme/app_colors_extra.dart';
 import '../../app/utils/money.dart';
 import '../../app/widgets/app_widgets.dart';
 import 'adjust_stock_controller.dart';
+import 'inventory_models.dart';
 
-/// Bottom sheet: Adjust Stock. Open it with
-/// Get.bottomSheet(const AdjustStockSheet(), isScrollControlled: true, ...)
+/// Bottom sheet: Adjust Stock for one product. Open it with
+/// Get.bottomSheet(AdjustStockSheet(...), isScrollControlled: true, ...)
 /// Bottom sheets are not routes, so the controller is created here with
 /// Get.put instead of a binding.
 class AdjustStockSheet extends GetView<AdjustStockController> {
-  const AdjustStockSheet({super.key});
+  const AdjustStockSheet({
+    super.key,
+    required this.item,
+    required this.canViewCost,
+  });
+
+  final StockItem item;
+  final bool canViewCost;
 
   @override
   Widget build(BuildContext context) {
-    Get.put(AdjustStockController());
+    Get.put(AdjustStockController(item: item, canViewCost: canViewCost));
     final media = MediaQuery.of(context);
 
     return Padding(
@@ -118,7 +126,7 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
                       style: TextStyle(fontSize: 12.sp, color: AppColors.grey),
                     ),
                     TextSpan(
-                      text: AdjustStockController.sku,
+                      text: item.sku,
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w800,
@@ -203,14 +211,21 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
               children: [
                 Icon(Icons.bed_outlined,
                     size: 24.sp, color: AppColors.primaryBlue),
-                Text(
-                  'PLUSH 6.5',
-                  style: TextStyle(
-                    fontSize: 7.sp,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primaryBlue,
+                if (item.category.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 3.w),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        item.category.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 7.sp,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -220,7 +235,9 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  AdjustStockController.productName,
+                  item.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 17.sp,
                     fontWeight: FontWeight.w800,
@@ -232,7 +249,7 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
                   TextSpan(
                     children: [
                       TextSpan(
-                        text: '${AdjustStockController.baseUnits} units on hand',
+                        text: '${item.units} units on hand',
                         style: TextStyle(
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w800,
@@ -240,37 +257,40 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
                         ),
                       ),
                       TextSpan(
-                        text: '  ·  5 Whse, 3 Floor',
+                        text: '  ·  ${item.warehouse} Whse, '
+                            '${item.showroom} Floor'
+                            '${item.damaged > 0 ? ', ${item.damaged} damaged' : ''}',
                         style:
                             TextStyle(fontSize: 11.sp, color: AppColors.grey),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(height: 3.h),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Cost Basis: ',
-                        style: TextStyle(
-                          fontSize: 11.5.sp,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.grey,
+                if (canViewCost) ...[
+                  SizedBox(height: 3.h),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'Cost Basis: ',
+                          style: TextStyle(
+                            fontSize: 11.5.sp,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.grey,
+                          ),
                         ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${formatCad(AdjustStockController.cost)} CAD / unit',
-                        style: TextStyle(
-                          fontSize: 11.5.sp,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textDark,
+                        TextSpan(
+                          text: '${formatCad(item.cost)} CAD / unit',
+                          style: TextStyle(
+                            fontSize: 11.5.sp,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textDark,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -295,12 +315,14 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
                 color: AppColors.textDark,
               ),
             ),
-            Text(
-              'Base: ${AdjustStockController.baseUnits} on hand',
-              style: TextStyle(
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primaryBlue,
+            Obx(
+              () => Text(
+                'Base: ${controller.base} at ${controller.locationLabel}',
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryBlue,
+                ),
               ),
             ),
           ],
@@ -393,10 +415,15 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
             : d < 0
                 ? AppColors.dangerBg
                 : AppColorsExtra.panelGrey;
+
+        final unitsText =
+            '${d > 0 ? '↑ +' : '↓ −'}${d.abs()} unit${d.abs() == 1 ? '' : 's'}';
         final String chip = d == 0
             ? 'No change'
-            : '${d > 0 ? '↑ +' : '↓ −'}${d.abs()} unit${d.abs() == 1 ? '' : 's'}'
-                '  |  ${d > 0 ? '+' : '−'} ${formatCad(controller.valueDelta.abs())} CAD inventory value';
+            : controller.canViewCost
+                ? '$unitsText  |  ${d > 0 ? '+' : '−'} '
+                    '${formatCad(controller.valueDelta.abs())} CAD inventory value'
+                : unitsText;
 
         return Column(
           children: [
@@ -423,8 +450,8 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
                     ),
                     Text(
                       isRelative
-                          ? 'Change (total ${controller.total})'
-                          : 'Total Units',
+                          ? 'Change (new quantity ${controller.after})'
+                          : 'Quantity at ${controller.locationLabel}',
                       style: TextStyle(fontSize: 12.sp, color: AppColors.grey),
                     ),
                   ],
@@ -498,19 +525,18 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
           ),
         ),
         SizedBox(height: 10.h),
-        Obx(
-          () => Row(
-            children: List.generate(AdjustStockController.locations.length, (i) {
-              final loc = AdjustStockController.locations[i];
+        Obx(() {
+          final locations = controller.locations;
+          return Row(
+            children: List.generate(locations.length, (i) {
+              final loc = locations[i];
               final selected = controller.location.value == i;
               final units = controller.newUnitsFor(i);
-              final changed = selected && controller.delta != 0;
+              final changed = units != loc.$2;
               return Expanded(
                 child: Padding(
-                  padding: EdgeInsets.only(
-                      right: i == AdjustStockController.locations.length - 1
-                          ? 0
-                          : 10.w),
+                  padding:
+                      EdgeInsets.only(right: i == locations.length - 1 ? 0 : 10.w),
                   child: GestureDetector(
                     onTap: () => controller.selectLocation(i),
                     child: AnimatedContainer(
@@ -585,8 +611,8 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
                 ),
               );
             }),
-          ),
-        ),
+          );
+        }),
       ],
     );
   }
@@ -762,12 +788,17 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
               children: [
                 Icon(Icons.lock_outline, size: 13.sp, color: AppColors.grey),
                 SizedBox(width: 5.w),
-                Text(
-                  'Recorded in the audit log · Owner ID #OWN-001',
-                  style: TextStyle(
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.grey,
+                Flexible(
+                  child: Text(
+                    controller.signedInAs.isEmpty
+                        ? 'Recorded in the audit log'
+                        : 'Recorded in the audit log · ${controller.signedInAs}',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.grey,
+                    ),
                   ),
                 ),
               ],

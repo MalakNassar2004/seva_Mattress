@@ -35,27 +35,27 @@ class InventoryView extends GetView<InventoryController> {
                       SizedBox(height: 16.h),
                       Obx(
                         () => SegmentedTabs(
-                          labels: InventoryController.tabLabels,
+                          labels: [
+                            'Stock (${controller.liveProductCount.value})',
+                            'Movements',
+                            'Low Stock (${controller.lowTabCount})',
+                          ],
                           selectedIndex: controller.tabIndex.value,
                           onChanged: controller.selectTab,
                         ),
                       ),
                       SizedBox(height: 14.h),
                       Obx(() {
-                        switch (controller.tabIndex.value) {
-                          case 0:
-                            return _buildStockTab();
-                          case 1:
-                            return const _TabPlaceholder(
-                              icon: Icons.swap_vert,
-                              title: 'Stock movements',
-                            );
-                          default:
-                            return const _TabPlaceholder(
-                              icon: Icons.warning_amber_rounded,
-                              title: 'Low stock',
-                            );
+                        final tab = controller.tabIndex.value;
+                        if (tab == InventoryController.movementsTab) {
+                          return _buildMovementsTab();
                         }
+                        // Stock and Low Stock share the same list. The key
+                        // gives every tab its own (empty) search box.
+                        return KeyedSubtree(
+                          key: ValueKey('stock-$tab'),
+                          child: _buildStockTab(),
+                        );
                       }),
                     ],
                   ),
@@ -239,22 +239,26 @@ class InventoryView extends GetView<InventoryController> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Flexible(
-                child: Obx(
-                  () => FittedBox(
+                child: Obx(() {
+                  // Only the owner sees the value (it is based on costs).
+                  final String text = !controller.canViewCost.value
+                      ? '—'
+                      : controller.hideAmounts.value
+                          ? '•••••••'
+                          : formatCad(controller.liveTotalValue.value);
+                  return FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      controller.hideAmounts.value
-                          ? '•••••••'
-                          : formatCad(InventoryController.totalValue),
+                      text,
                       style: TextStyle(
                         fontSize: 30.sp,
                         fontWeight: FontWeight.w800,
                         color: AppColors.deepBlue,
                       ),
                     ),
-                  ),
-                ),
+                  );
+                }),
               ),
               SizedBox(width: 6.w),
               Text(
@@ -265,62 +269,55 @@ class InventoryView extends GetView<InventoryController> {
                   color: AppColors.grey,
                 ),
               ),
-              SizedBox(width: 8.w),
-              StatusPill(
-                text: InventoryController.valueChange,
-                icon: Icons.trending_up,
-                fg: AppColors.success,
-                bg: AppColors.successBg,
-                border: AppColorsExtra.successBorder,
-                fontSize: 11,
-              ),
             ],
           ),
           SizedBox(height: 12.h),
           const Divider(),
           SizedBox(height: 12.h),
-          Row(
-            children: [
-              Expanded(
-                child: _StatTile(
-                  value: '${InventoryController.activeUnits}',
-                  label: 'Active units',
-                  bg: AppColorsExtra.panelGrey,
-                  border: AppColorsExtra.panelBorder,
-                  valueColor: AppColors.textDark,
-                  labelColor: AppColors.grey,
+          Obx(
+            () => Row(
+              children: [
+                Expanded(
+                  child: _StatTile(
+                    value: '${controller.liveActiveUnits.value}',
+                    label: 'Active units',
+                    bg: AppColorsExtra.panelGrey,
+                    border: AppColorsExtra.panelBorder,
+                    valueColor: AppColors.textDark,
+                    labelColor: AppColors.grey,
+                  ),
                 ),
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: _StatTile(
-                  value: '${InventoryController.lowStockCount}',
-                  label: 'Low Stock',
-                  bg: AppColors.warningBg,
-                  border: AppColorsExtra.warningBorder,
-                  valueColor: AppColors.warning,
-                  labelColor: AppColorsExtra.amber,
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: _StatTile(
+                    value: '${controller.liveLowStock.value}',
+                    label: 'Low Stock',
+                    bg: AppColors.warningBg,
+                    border: AppColorsExtra.warningBorder,
+                    valueColor: AppColors.warning,
+                    labelColor: AppColorsExtra.amber,
+                  ),
                 ),
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: _StatTile(
-                  value: '${InventoryController.outOfStockCount}',
-                  label: 'Out of Stock',
-                  bg: AppColors.dangerBg,
-                  border: AppColorsExtra.dangerBorder,
-                  valueColor: AppColors.danger,
-                  labelColor: AppColors.danger,
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: _StatTile(
+                    value: '${controller.liveOutOfStock.value}',
+                    label: 'Out of Stock',
+                    bg: AppColors.dangerBg,
+                    border: AppColorsExtra.dangerBorder,
+                    valueColor: AppColors.danger,
+                    labelColor: AppColors.danger,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ---------------- Stock tab ----------------
+  // ---------------- Stock tab (also used by Low Stock) ----------------
   Widget _buildStockTab() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,8 +368,9 @@ class InventoryView extends GetView<InventoryController> {
           ),
         ),
         SizedBox(height: 14.h),
-        Obx(
-          () => Column(
+        Obx(() {
+          if (controller.items.isEmpty) return _buildEmptyStock();
+          return Column(
             children: controller.items
                 .map(
                   (it) => Padding(
@@ -381,9 +379,35 @@ class InventoryView extends GetView<InventoryController> {
                   ),
                 )
                 .toList(),
-          ),
-        ),
+          );
+        }),
       ],
+    );
+  }
+
+  /// Shown when the list is empty. Called inside an Obx, so the observables
+  /// read here are tracked.
+  Widget _buildEmptyStock() {
+    if (controller.isLoading.value) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 40.h),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    final String message;
+    if (controller.loadError.value != null) {
+      message = 'Could not load the stock. Check your connection.';
+    } else if (controller.liveProductCount.value == 0) {
+      message = 'No products yet. Add products from the Products page.';
+    } else if (controller.tabIndex.value == InventoryController.lowTab) {
+      message = 'Nothing is running low on stock.';
+    } else {
+      message = 'No products match your search.';
+    }
+    return _InfoCard(
+      icon: Icons.inventory_2_outlined,
+      title: 'No items',
+      message: message,
     );
   }
 
@@ -404,6 +428,11 @@ class InventoryView extends GetView<InventoryController> {
         : level == StockLevel.out
             ? AppColorsExtra.dangerBorder
             : null;
+
+    // Cost and value are owner-only, and only when a cost was saved.
+    final showCost = controller.canViewCost.value && it.cost > 0;
+    final costText = showCost ? formatCad(it.cost, decimals: 0) : '—';
+    final valueText = showCost ? '${formatCad(it.value, decimals: 0)} CAD' : '—';
 
     return GestureDetector(
       onTap: () => controller.onItemTap(it),
@@ -471,7 +500,8 @@ class InventoryView extends GetView<InventoryController> {
                     SizedBox(width: 8.w),
                     Expanded(
                       child: Text(
-                        it.reorderStatus ?? '',
+                        it.reorderStatus ??
+                            'Out of stock · no reorder placed yet',
                         style: TextStyle(
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w700,
@@ -496,7 +526,7 @@ class InventoryView extends GetView<InventoryController> {
                               fontSize: 12.sp, color: AppColors.grey),
                         ),
                         TextSpan(
-                          text: formatCad(it.cost, decimals: 0),
+                          text: costText,
                           style: TextStyle(
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w800,
@@ -528,7 +558,7 @@ class InventoryView extends GetView<InventoryController> {
                     )
                   else
                     Text(
-                      'Value: ${formatCad(it.value, decimals: 0)} CAD',
+                      'Value: $valueText',
                       style: TextStyle(
                         fontSize: 13.sp,
                         fontWeight: FontWeight.w800,
@@ -616,6 +646,44 @@ class InventoryView extends GetView<InventoryController> {
       ),
     );
   }
+
+  // ---------------- Movements tab ----------------
+  Widget _buildMovementsTab() {
+    return Obx(() {
+      if (!controller.canViewCost.value) {
+        return const _InfoCard(
+          icon: Icons.lock_outline,
+          title: 'Owner only',
+          message: 'Only the owner can see the movement history.',
+        );
+      }
+      if (controller.movementsError.value != null) {
+        return const _InfoCard(
+          icon: Icons.error_outline,
+          title: 'Could not load',
+          message: 'Could not load the movements. Check your connection.',
+        );
+      }
+      final list = controller.movements;
+      if (list.isEmpty) {
+        return const _InfoCard(
+          icon: Icons.swap_vert,
+          title: 'No movements yet',
+          message: 'Every change of stock will appear here.',
+        );
+      }
+      return Column(
+        children: list
+            .map(
+              (m) => Padding(
+                padding: EdgeInsets.only(bottom: 12.h),
+                child: _MovementCard(movement: m),
+              ),
+            )
+            .toList(),
+      );
+    });
+  }
 }
 
 class _StatTile extends StatelessWidget {
@@ -669,12 +737,157 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-/// TODO(design): replace with the real Movements / Low stock tab content.
-class _TabPlaceholder extends StatelessWidget {
-  const _TabPlaceholder({required this.icon, required this.title});
+/// One stock movement (a row of the audit log).
+class _MovementCard extends StatelessWidget {
+  const _MovementCard({required this.movement});
+
+  final StockMovement movement;
+
+  static const List<String> _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  String _when(DateTime t) {
+    final local = t.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = local.hour < 12 ? 'AM' : 'PM';
+    return '${_months[local.month - 1]} ${local.day} · $hour:$minute $period';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = movement;
+    final d = m.delta;
+    final Color fg = d > 0
+        ? AppColors.success
+        : d < 0
+            ? AppColors.danger
+            : AppColors.grey;
+    final Color bg = d > 0
+        ? AppColors.successBg
+        : d < 0
+            ? AppColors.dangerBg
+            : AppColorsExtra.panelGrey;
+    final deltaText = d > 0 ? '+$d' : '$d';
+
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20.r),
+        boxShadow: AppShadows.soft,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  m.productName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(20.r),
+                ),
+                child: Text(
+                  deltaText,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w800,
+                    color: fg,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (m.sku.isNotEmpty) ...[
+            SizedBox(height: 3.h),
+            Text(
+              'SKU: ${m.sku}',
+              style: TextStyle(
+                fontSize: 11.sp,
+                fontFamily: 'monospace',
+                color: AppColors.grey,
+              ),
+            ),
+          ],
+          SizedBox(height: 8.h),
+          Text(
+            '${m.locationLabel} · ${m.reason}',
+            style: TextStyle(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textDark,
+            ),
+          ),
+          SizedBox(height: 2.h),
+          Text(
+            '${m.from} → ${m.to} units',
+            style: TextStyle(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primaryBlue,
+            ),
+          ),
+          if (m.note.isNotEmpty) ...[
+            SizedBox(height: 4.h),
+            Text(
+              'Note: ${m.note}',
+              style: TextStyle(fontSize: 11.sp, color: AppColors.grey),
+            ),
+          ],
+          SizedBox(height: 8.h),
+          const Divider(),
+          SizedBox(height: 6.h),
+          Row(
+            children: [
+              Icon(Icons.person_outline, size: 14.sp, color: AppColors.grey),
+              SizedBox(width: 4.w),
+              Expanded(
+                child: Text(
+                  m.actor.isEmpty ? 'Unknown' : m.actor,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.grey),
+                ),
+              ),
+              Text(
+                _when(m.at),
+                style: TextStyle(fontSize: 11.sp, color: AppColors.grey),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Message card for empty / unavailable states.
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
 
   final IconData icon;
   final String title;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -702,9 +915,13 @@ class _TabPlaceholder extends StatelessWidget {
               ),
             ),
             SizedBox(height: 4.h),
-            Text(
-              'This tab is not designed yet.',
-              style: TextStyle(fontSize: 12.sp, color: AppColors.grey),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12.sp, color: AppColors.grey),
+              ),
             ),
           ],
         ),

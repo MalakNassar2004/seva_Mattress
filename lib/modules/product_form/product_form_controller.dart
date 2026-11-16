@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/app/routes/app_routes.dart';
 import 'package:seva_mattress/data/repositories/product_repository.dart';
 import 'package:seva_mattress/data/services/session_service.dart';
 import '../products/product_item.dart';
@@ -18,6 +19,14 @@ class ProductFormController extends GetxController {
 
   // ---------------- State ----------------
   static const int maxPhotos = 5;
+
+  // Limits (the Firestore rules enforce the same numbers).
+  static const int maxNameLength = 80;
+  static const int maxModelLength = 40;
+  static const int maxDescriptionLength = 500;
+  static const int maxDimensionsLength = 80;
+  static const double maxPrice = 1000000;
+  static const int maxStock = 100000;
 
   static const Map<String, String> sizes = {
     'Twin': '(39"×75")',
@@ -53,6 +62,11 @@ class ProductFormController extends GetxController {
   ];
 
   final _repo = ProductRepository();
+
+  /// Id of the product being added. It is created ONCE for this form, so
+  /// pressing Save twice (or retrying on a bad connection) can never create
+  /// two products.
+  late final String _newId = _repo.newProductId();
 
   /// The product being edited (passed from the list). Null when adding.
   late final ProductItem? editing = _readEditing();
@@ -110,6 +124,30 @@ class ProductFormController extends GetxController {
   final profit = RxnDouble();
   final stockUnits = RxnInt();
 
+  // ---------------- Unsaved changes ----------------
+  String _baseline = '';
+
+  String _fingerprint() => [
+    nameController.text,
+    modelController.text,
+    descriptionController.text,
+    skuController.text,
+    retailController.text,
+    costController.text,
+    stockController.text,
+    dimensionsController.text,
+    category.value ?? '',
+    selectedSize.value,
+    customSizeEnabled.value,
+    thicknesses.join('|'),
+    cuts.join('|'),
+    pricingFormula.value ?? '',
+    notesRequired.value,
+    isActive.value,
+  ].join('\u0001');
+
+  bool get isDirty => _fingerprint() != _baseline;
+
   @override
   void onInit() {
     super.onInit();
@@ -120,6 +158,7 @@ class ProductFormController extends GetxController {
     });
     _recalculate();
     stockUnits.value = int.tryParse(stockController.text.trim());
+    _baseline = _fingerprint();
     _loadPermissions();
   }
 
@@ -133,15 +172,30 @@ class ProductFormController extends GetxController {
       final id = editing?.id ?? '';
       if (canViewCost.value && isEdit && id.isNotEmpty) {
         final cost = await _repo.loadCost(id);
-        if (cost != null) costController.text = cost.toStringAsFixed(2);
+        if (cost != null) {
+          // Loading the saved cost is not a change made by the user.
+          final wasClean = _fingerprint() == _baseline;
+          costController.text = cost.toStringAsFixed(2);
+          if (wasClean) _baseline = _fingerprint();
+        }
       }
     } catch (_) {
       _permissionsLoaded = false;
     }
   }
 
+  // ---------------- Helpers ----------------
   double? _parse(String text) =>
       double.tryParse(text.replaceAll(RegExp(r'[^0-9.]'), ''));
+
+  /// Money rounded to 2 decimals (no 0.1 + 0.2 surprises later).
+  double? _money(String text) {
+    final v = _parse(text);
+    return v == null ? null : (v * 100).round() / 100;
+  }
+
+  /// Trims and collapses repeated spaces.
+  String _clean(String text) => text.trim().replaceAll(RegExp(r'\s+'), ' ');
 
   void _recalculate() {
     final retail = _parse(retailController.text);
@@ -171,12 +225,53 @@ class ProductFormController extends GetxController {
 
   void setActive(bool active) => isActive.value = active;
 
-  /// Scans a barcode with the camera and puts the text in the SKU field.
+  /// Scans a barcode with the camera and puts it in the SKU field. If the
+  /// barcode already belongs to a product, it offers to open that product.
   Future<void> onScanPressed() async {
     FocusManager.instance.primaryFocus?.unfocus();
-    final code = await ScannerView.scan();
-    if (code == null || code.trim().isEmpty) return;
-    skuController.text = code.trim();
+    final raw = await ScannerView.scan();
+    if (raw == null) return;
+
+    final code = normalizeSku(raw);
+    if (code.isEmpty) return;
+
+    final problem = skuProblem(code);
+    if (problem != null) {
+      _showMessage('Cannot use this code', problem);
+      return;
+    }
+
+    ProductItem? existing;
+    try {
+      existing = await _repo.findBySku(code);
+    } catch (_) {
+      _showMessage(
+        'Could not check duplicates',
+        'No connection. The SKU was filled in and will be checked again '
+            'when you save.',
+      );
+    }
+
+    if (existing != null && existing.id != editing?.id) {
+      if (isEdit) {
+        _showMessage(
+          'SKU already used',
+          'This barcode belongs to "${existing.name}". Every product needs '
+              'its own SKU.',
+        );
+        return;
+      }
+      final open = await _confirm(
+        title: 'Product already exists',
+        message: 'This barcode belongs to "${existing.name}". Open that '
+            'product instead of adding a new one?',
+        confirmLabel: 'Open product',
+      );
+      if (open) Get.offNamed(AppRoutes.productEdit, arguments: existing);
+      return;
+    }
+
+    skuController.text = code;
   }
 
   void addPhoto() {
@@ -192,24 +287,48 @@ class ProductFormController extends GetxController {
   }
 
   String? _validationError() {
-    if (nameController.text.trim().isEmpty) {
-      return 'Product name is required.';
+    final name = _clean(nameController.text);
+    if (name.isEmpty) return 'Product name is required.';
+    if (name.length > maxNameLength) {
+      return 'Product name is too long (max $maxNameLength characters).';
     }
     if (category.value == null) return 'Please choose a category.';
+    if (_clean(modelController.text).length > maxModelLength) {
+      return 'Model number is too long (max $maxModelLength characters).';
+    }
+    if (descriptionController.text.trim().length > maxDescriptionLength) {
+      return 'Description is too long (max $maxDescriptionLength characters).';
+    }
 
-    final retail = _parse(retailController.text);
+    final sku = normalizeSku(skuController.text);
+    final skuError = skuProblem(sku);
+    if (skuError != null) return skuError;
+    if (isEdit && sku.isEmpty && (editing?.sku ?? '').trim().isNotEmpty) {
+      return 'SKU cannot be empty.';
+    }
+
+    final retail = _money(retailController.text);
     if (retail == null || retail <= 0) return 'Enter a valid retail price.';
+    if (retail > maxPrice) return 'The retail price is too high.';
 
     if (canViewCost.value) {
       final costText = costController.text.trim();
-      if (costText.isNotEmpty && _parse(costText) == null) {
-        return 'Enter a valid cost price.';
+      if (costText.isNotEmpty) {
+        final cost = _money(costText);
+        if (cost == null) return 'Enter a valid cost price.';
+        if (cost > maxPrice) return 'The cost price is too high.';
       }
     }
 
     final stock = int.tryParse(stockController.text.trim());
     if (stock == null || stock < 0) {
       return 'Enter the stock quantity (0 or more).';
+    }
+    if (stock > maxStock) return 'The stock quantity is too high.';
+
+    if (_clean(dimensionsController.text).length > maxDimensionsLength) {
+      return 'Dimensions text is too long (max $maxDimensionsLength '
+          'characters).';
     }
     return null;
   }
@@ -238,20 +357,34 @@ class ProductFormController extends GetxController {
     final costText = costController.text.trim();
     // Empty = "leave the saved cost as it is" (a saved cost cannot be erased).
     final double? costPrice =
-    (canEditCost && costText.isNotEmpty) ? _parse(costText) : null;
+    (canEditCost && costText.isNotEmpty) ? _money(costText) : null;
+    final retail = _money(retailController.text)!;
+    final sku = normalizeSku(skuController.text);
+
+    if (costPrice != null && costPrice > retail) {
+      final ok = await _confirm(
+        title: 'Cost is higher than the price',
+        message: 'The cost price (${formatMoney(costPrice)}) is higher than '
+            'the retail price (${formatMoney(retail)}). Every sale would '
+            'lose money. Save anyway?',
+        confirmLabel: 'Save anyway',
+        cancelLabel: 'Go back',
+      );
+      if (!ok) return;
+    }
 
     // Photos and the cost price are not part of this map on purpose: photos
     // are managed separately, and the cost price lives in its own
     // owner-only document.
     final data = <String, dynamic>{
-      'name': nameController.text.trim(),
-      'model': modelController.text.trim(),
+      'name': _clean(nameController.text),
+      'model': _clean(modelController.text),
       'description': descriptionController.text.trim(),
-      'sku': skuController.text.trim(),
+      'sku': sku, // empty = the repository gives it an automatic SKU
       'category': category.value,
-      'retailPrice': _parse(retailController.text),
+      'retailPrice': retail,
       'units': int.parse(stockController.text.trim()),
-      'dimensions': dimensionsController.text.trim(),
+      'dimensions': _clean(dimensionsController.text),
       'size': selectedSize.value,
       'customSize': customSizeEnabled.value,
       'thicknesses': thicknesses.toList(),
@@ -263,6 +396,7 @@ class ProductFormController extends GetxController {
 
     isSaving.value = true;
     try {
+      final String savedSku;
       if (isEdit) {
         final id = editing?.id ?? '';
         if (id.isEmpty) {
@@ -272,14 +406,15 @@ class ProductFormController extends GetxController {
           );
           return;
         }
-        await _repo.update(
+        savedSku = await _repo.update(
           id,
           data,
           costPrice: costPrice,
           canEditCost: canEditCost,
         );
       } else {
-        await _repo.create(
+        savedSku = await _repo.create(
+          _newId,
           data,
           costPrice: costPrice,
           canEditCost: canEditCost,
@@ -289,7 +424,13 @@ class ProductFormController extends GetxController {
       // Go back first, then show the message (a snackbar would otherwise
       // be closed by Get.back()).
       Get.back();
-      _showMessage('Saved', 'The product was saved.');
+      final generated = sku.isEmpty && savedSku.isNotEmpty;
+      _showMessage(
+        'Saved',
+        generated
+            ? 'The product was saved. Its SKU is $savedSku.'
+            : 'The product was saved.',
+      );
     } catch (e) {
       _showMessage('Could not save', describeError(e));
     } finally {
@@ -302,9 +443,51 @@ class ProductFormController extends GetxController {
   }
 
   // ---------------- Navigation ----------------
-  void onDiscardPressed() => Get.back();
+  /// Asks before throwing away changes that were not saved.
+  Future<void> _confirmLeave() async {
+    if (isSaving.value) return;
+    if (!isDirty) {
+      Get.back();
+      return;
+    }
+    final discard = await _confirm(
+      title: 'Discard changes?',
+      message: 'You have unsaved changes. If you leave now they will be lost.',
+      confirmLabel: 'Discard',
+      cancelLabel: 'Keep editing',
+    );
+    if (discard) Get.back();
+  }
 
-  void onBackPressed() => Get.back();
+  void onDiscardPressed() => _confirmLeave();
+
+  void onBackPressed() => _confirmLeave();
+
+  // ---------------- Messages ----------------
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    String cancelLabel = 'Cancel',
+  }) async {
+    final result = await Get.dialog<bool>(
+      AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: Text(cancelLabel),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
 
   void _showMessage(String title, String message) {
     Get.snackbar(

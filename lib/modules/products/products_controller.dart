@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:seva_mattress/data/repositories/product_repository.dart';
 import '../../app/routes/app_routes.dart';
 import '../owner_shell/owner_nav.dart';
+import '../scanner/scanner_view.dart';
 import 'product_item.dart';
 
 /// Products catalogue (/products, opened from the Inventory tab).
@@ -33,6 +34,9 @@ class ProductsController extends GetxController {
   ];
 
   final _repo = ProductRepository();
+
+  /// Not disposed on purpose (see the Login controller note).
+  final searchController = TextEditingController();
 
   /// Category chips with live counts.
   final categories = <ProductCategory>[
@@ -163,11 +167,20 @@ class ProductsController extends GetxController {
     _refresh();
   }
 
+  /// Scans a barcode and searches for it.
+  Future<void> onScanPressed() async {
+    final code = await ScannerView.scan();
+    if (code == null || code.trim().isEmpty) return;
+    searchController.text = code.trim();
+    onSearchChanged(code.trim());
+  }
+
   void onFilterPressed() {
     // TODO(backend): open the filters (not designed yet) and apply them.
   }
 
-  /// Soft delete: the product is hidden but past sales are kept.
+  /// Soft delete: the product is hidden but past sales are kept, and its
+  /// SKU becomes free again.
   void deleteProduct(ProductItem product) {
     _delete(product);
   }
