@@ -444,7 +444,7 @@ class AdjustStockSheet extends GetView<AdjustStockController> {
               decoration: BoxDecoration(
                 color: bg,
                 borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: fg.withOpacity(0.25)),
+                border: Border.all(color: fg.withValues(alpha: 0.25)),
               ),
               child: Text(
                 chip,

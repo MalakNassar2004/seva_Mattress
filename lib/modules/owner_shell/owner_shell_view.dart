@@ -5,6 +5,7 @@ import '../../app/theme/app_colors.dart';
 import '../../app/widgets/app_widgets.dart';
 import '../../app/widgets/owner_bottom_nav.dart';
 import '../inventory/inventory_view.dart';
+import '../more/more_view.dart';
 import '../orders/orders_view.dart';
 import 'owner_shell_controller.dart';
 
@@ -41,18 +42,7 @@ class OwnerShellView extends GetView<OwnerShellController> {
                         name: 'Reports',
                         icon: Icons.bar_chart_rounded,
                       ),
-                      // TODO(design): replace with the real More menu.
-                      _PlaceholderTab(
-                        name: 'More',
-                        icon: Icons.more_horiz,
-                        actions: [
-                          ('Customers', controller.onCustomersPressed),
-                          ('Deliveries', controller.onDeliveriesPressed),
-                          ('Suppliers', controller.onSuppliersPressed),
-                          ('Staff', controller.onStaffPressed),
-                          ('Purchase Orders', controller.onPurchaseOrdersPressed),
-                        ],
-                      ),
+                      const MoreView(),
                     ],
                   ),
                 ),
@@ -70,19 +60,12 @@ class OwnerShellView extends GetView<OwnerShellController> {
   }
 }
 
-/// Temporary page for tabs whose screens are not built yet. An optional
-/// button links to pages that are already built.
+/// Temporary page for tabs whose screens are not built yet.
 class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({
-    required this.name,
-    required this.icon,
-    this.actions = const [],
-  });
+  const _PlaceholderTab({required this.name, required this.icon});
 
   final String name;
   final IconData icon;
-  /// Links to pages that are already built: (label, onTap).
-  final List<(String, VoidCallback)> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -113,20 +96,6 @@ class _PlaceholderTab extends StatelessWidget {
                     color: AppColors.textDark,
                   ),
                 ),
-                if (actions.isNotEmpty) SizedBox(height: 12.h),
-                for (final a in actions) ...[
-                  TextButton(
-                    onPressed: a.$2,
-                    child: Text(
-                      '${a.$1} ›',
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryBlue,
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

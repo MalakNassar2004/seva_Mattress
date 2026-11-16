@@ -584,7 +584,7 @@ class ProductsView extends GetView<ProductsController> {
           borderRadius: BorderRadius.circular(18.r),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primaryBlue.withOpacity(0.28),
+              color: AppColors.primaryBlue.withValues(alpha: 0.28),
               blurRadius: 16,
               offset: const Offset(0, 8),
             ),
@@ -617,7 +617,7 @@ class ProductsView extends GetView<ProductsController> {
                     'New SKU',
                     style: TextStyle(
                       fontSize: 11.sp,
-                      color: AppColors.white.withOpacity(0.85),
+                      color: AppColors.white.withValues(alpha: 0.85),
                     ),
                   ),
                   SizedBox(width: 10.w),
@@ -626,7 +626,7 @@ class ProductsView extends GetView<ProductsController> {
                     height: 32.w,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.white.withOpacity(0.2),
+                      color: AppColors.white.withValues(alpha: 0.2),
                     ),
                     child: Icon(Icons.arrow_forward,
                         size: 18.sp, color: AppColors.white),

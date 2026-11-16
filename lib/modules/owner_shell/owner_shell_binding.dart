@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import '../inventory/inventory_controller.dart';
+import '../more/more_controller.dart';
 import '../orders/orders_controller.dart';
 import 'owner_shell_controller.dart';
 
@@ -11,5 +12,6 @@ class OwnerShellBinding extends Bindings {
     Get.lazyPut<OwnerShellController>(() => OwnerShellController());
     Get.lazyPut<InventoryController>(() => InventoryController());
     Get.lazyPut<OrdersController>(() => OrdersController(), fenix: true);
+    Get.lazyPut<MoreController>(() => MoreController(), fenix: true);
   }
 }

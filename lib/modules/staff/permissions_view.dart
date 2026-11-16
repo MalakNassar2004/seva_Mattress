@@ -7,6 +7,7 @@ import '../../app/theme/app_colors_extra.dart';
 import '../../app/theme/app_theme.dart';
 import '../../app/widgets/app_widgets.dart';
 import '../../app/widgets/owner_widgets.dart';
+import '../../app/widgets/page_widgets.dart';
 import '../../app/widgets/shared_widgets.dart';
 import 'permissions_controller.dart';
 import 'staff_mock.dart';
@@ -443,7 +444,7 @@ class PermissionsView extends GetView<PermissionsController> {
                 ),
               ),
               SizedBox(width: 8.w),
-              StaffSwitch(value: on, onChanged: (v) => controller.toggle(p, v)),
+              AppSwitch(value: on, onChanged: (v) => controller.toggle(p, v)),
             ],
           ),
           if (p.hasDiscountCap && on) ...[

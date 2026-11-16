@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import '../../app/utils/dates.dart';
 import 'staff_mock.dart';
 import 'staff_models.dart';
 
@@ -45,22 +46,5 @@ class StaffStore extends GetxService {
     return 'EMP-${(max + 1).toString().padLeft(4, '0')}';
   }
 
-  static String _today() {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final d = DateTime.now();
-    return '${months[d.month - 1]} ${d.day}, ${d.year}';
-  }
+  static String _today() => formatDate(DateTime.now());
 }

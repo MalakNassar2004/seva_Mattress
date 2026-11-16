@@ -60,4 +60,11 @@ abstract class AppRoutes {
 
   /// arguments: PermissionsArgs. Returns PermissionsResult when applied.
   static const String permissions = '/permissions';
+
+  // ---------------- Control ----------------
+  // The More menu itself is the More tab of /owner.
+  static const String exports = '/exports';
+  static const String auditLog = '/audit-log';
+  static const String settings = '/settings';
+  static const String approvalRules = '/settings/approval-rules';
 }

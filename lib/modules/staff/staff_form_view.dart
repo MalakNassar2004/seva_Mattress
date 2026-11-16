@@ -6,11 +6,11 @@ import '../../app/theme/app_colors_extra.dart';
 import '../../app/theme/app_theme.dart';
 import '../../app/widgets/app_widgets.dart';
 import '../../app/widgets/owner_widgets.dart';
+import '../../app/widgets/page_widgets.dart';
 import '../../app/widgets/shared_widgets.dart';
 import 'staff_form_controller.dart';
 import 'staff_mock.dart';
 import 'staff_models.dart';
-import 'staff_widgets.dart';
 
 /// Add / Edit Staff.
 class StaffFormView extends GetView<StaffFormController> {
@@ -431,7 +431,7 @@ class StaffFormView extends GetView<StaffFormController> {
                   ],
                 ),
               ),
-              StaffSwitch(value: isActive, onChanged: controller.toggleActive),
+              AppSwitch(value: isActive, onChanged: controller.toggleActive),
             ],
           ),
         ],

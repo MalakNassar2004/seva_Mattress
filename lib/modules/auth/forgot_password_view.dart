@@ -352,7 +352,7 @@ class _MethodTile extends StatelessWidget {
         height: 56.h,
         padding: EdgeInsets.symmetric(horizontal: 12.w),
         decoration: BoxDecoration(
-          color: selected ? AppColors.lightBlue.withOpacity(0.45) : AppColors.white,
+          color: selected ? AppColors.lightBlue.withValues(alpha: 0.45) : AppColors.white,
           borderRadius: BorderRadius.circular(16.r),
           border: Border.all(
             color: selected ? AppColors.primaryBlue : AppColors.border,

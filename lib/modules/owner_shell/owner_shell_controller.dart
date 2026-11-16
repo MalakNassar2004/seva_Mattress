@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import '../../app/routes/app_routes.dart';
 
 /// Holds the selected tab of the Owner shell.
 class OwnerShellController extends GetxController {
@@ -21,13 +20,4 @@ class OwnerShellController extends GetxController {
 
   // ---------------- Actions ----------------
   void changeTab(int index) => currentIndex.value = index;
-
-  // ---------------- Navigation ----------------
-  /// Temporary entry on the More tab placeholder.
-  // TODO(design): remove when the More menu is designed.
-  void onCustomersPressed() => Get.toNamed(AppRoutes.customers);
-  void onDeliveriesPressed() => Get.toNamed(AppRoutes.deliveries);
-  void onSuppliersPressed() => Get.toNamed(AppRoutes.suppliers);
-  void onPurchaseOrdersPressed() => Get.toNamed(AppRoutes.purchaseOrders);
-  void onStaffPressed() => Get.toNamed(AppRoutes.staff);
 }

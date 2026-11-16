@@ -7,6 +7,7 @@ import '../../app/theme/app_theme.dart';
 import '../../app/widgets/app_widgets.dart';
 import '../../app/widgets/owner_bottom_nav.dart';
 import '../../app/widgets/owner_widgets.dart';
+import '../../app/widgets/page_widgets.dart';
 import '../../app/widgets/shared_widgets.dart';
 import '../owner_shell/owner_shell_controller.dart';
 import 'staff_controller.dart';
@@ -104,32 +105,14 @@ class StaffView extends GetView<StaffController> {
           ],
         ),
         SizedBox(height: 14.h),
-        Row(
-          children: [
-            Text(
-              'Staff',
-              style: TextStyle(
-                fontSize: 28.sp,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textDark,
-                letterSpacing: -0.6,
-              ),
-            ),
-            SizedBox(width: 10.w),
-            StatusPill(
-              text: '${controller.store.staff.length} Members',
-              fg: AppColors.deepBlue,
-              bg: AppColors.lightBlue,
-              fontSize: 12.5,
-            ),
-          ],
-        ),
-        SizedBox(height: 4.h),
-        Text(
-          'Team Directory & Access Management · Surrey, BC',
-          style: TextStyle(
-            fontSize: 12.5.sp,
-            color: AppColors.textDark.withValues(alpha: 0.75),
+        PageTitle(
+          title: 'Staff',
+          subtitle: 'Team Directory & Access Management · Surrey, BC',
+          badge: StatusPill(
+            text: '${controller.store.staff.length} Members',
+            fg: AppColors.deepBlue,
+            bg: AppColors.lightBlue,
+            fontSize: 12.5,
           ),
         ),
       ],
@@ -241,89 +224,25 @@ class StaffView extends GetView<StaffController> {
 
   // ---------------- Search & filters ----------------
   Widget _buildSearch() {
-    return Container(
-      height: 50.h,
-      padding: EdgeInsets.only(left: 14.w, right: 8.w),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.small,
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.search, size: 22.sp, color: AppColors.grey),
-          SizedBox(width: 10.w),
-          Expanded(
-            child: TextField(
-              onChanged: controller.onSearchChanged,
-              style: TextStyle(fontSize: 14.sp, color: AppColors.textDark),
-              decoration: InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-                hintText: 'Search employee name, role, email...',
-                hintStyle: TextStyle(
-                  fontSize: 13.sp,
-                  color: AppColors.greyLight,
-                ),
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: controller.onFiltersPressed,
-            child: Container(
-              width: 34.w,
-              height: 34.w,
-              decoration: BoxDecoration(
-                color: AppColorsExtra.panelGrey,
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-              child: Icon(Icons.tune, size: 18.sp, color: AppColors.grey),
-            ),
-          ),
-        ],
-      ),
+    return AppSearchBar(
+      hint: 'Search employee name, role, email...',
+      onChanged: controller.onSearchChanged,
+      onFilterTap: controller.onFiltersPressed,
     );
   }
 
   Widget _buildRoleChips() {
-    final selected = controller.role.value;
     final options = <StaffRole?>[null, ...StaffRole.values];
-    return SizedBox(
-      height: 38.h,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: options.length,
-        separatorBuilder: (_, _) => SizedBox(width: 8.w),
-        itemBuilder: (_, i) {
-          final r = options[i];
-          final active = r == selected;
-          final label = r == null ? 'All' : r.plural;
-          return GestureDetector(
-            onTap: () => controller.selectRole(r),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: EdgeInsets.symmetric(horizontal: 14.w),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: active ? AppColors.deepBlue : AppColors.white,
-                borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(
-                  color: active ? AppColors.deepBlue : AppColors.border,
-                ),
-              ),
-              child: Text(
-                '$label (${controller.countFor(r)})',
-                style: TextStyle(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                  color: active ? AppColors.white : AppColors.textDark,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+    return FilterChipBar(
+      options: [
+        for (final r in options)
+          FilterOption(
+            r == null ? 'All' : r.plural,
+            count: controller.countFor(r),
+          ),
+      ],
+      selectedIndex: options.indexOf(controller.role.value),
+      onSelected: (i) => controller.selectRole(options[i]),
     );
   }
 
@@ -516,7 +435,7 @@ class _StaffCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                StaffSwitch(value: m.active, onChanged: onActiveChanged),
+                AppSwitch(value: m.active, onChanged: onActiveChanged),
                 SizedBox(width: 4.w),
                 Icon(
                   Icons.chevron_right,

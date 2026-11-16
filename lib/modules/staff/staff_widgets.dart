@@ -3,30 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_colors_extra.dart';
 
-/// Blue / grey toggle used on the Staff screens.
-class StaffSwitch extends StatelessWidget {
-  const StaffSwitch({super.key, required this.value, required this.onChanged});
-
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Switch(
-      value: value,
-      onChanged: onChanged,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      thumbColor: WidgetStateProperty.all(AppColors.white),
-      trackColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected)
-            ? AppColors.deepBlue
-            : const Color(0xFFCBD5E1),
-      ),
-      trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-    );
-  }
-}
-
 /// Light-blue rounded role label ("Store Manager", "Cashier").
 class RoleChip extends StatelessWidget {
   const RoleChip(this.text, {super.key, this.muted = false});

@@ -190,7 +190,7 @@ class PinView extends GetView<PinController> {
               boxShadow: active
                   ? [
                 BoxShadow(
-                  color: AppColors.primaryBlue.withOpacity(0.25),
+                  color: AppColors.primaryBlue.withValues(alpha: 0.25),
                   blurRadius: 12,
                 ),
               ]
@@ -345,7 +345,7 @@ class _KeyButton extends StatelessWidget {
           height: 58.h,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16.r),
-            border: Border.all(color: AppColors.border.withOpacity(0.7)),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
             boxShadow: AppShadows.small,
           ),
           child: Column(

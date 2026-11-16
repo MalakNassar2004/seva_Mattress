@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/widgets/shared_widgets.dart';
+import '../audit/audit_models.dart';
+import '../audit/audit_store.dart';
 import 'confirm_permissions_sheet.dart';
 import 'staff_models.dart';
 import 'staff_store.dart';
@@ -167,6 +169,16 @@ class PermissionsController extends GetxController {
           permissions: result.permissions,
           discountCap: result.discountCap,
         ),
+      );
+      final first = changes.first;
+      AuditStore.to.record(
+        action: AuditAction.permissionChange,
+        sentence: changes.length == 1
+            ? 'Permission changed for ${member.name}: '
+                  '${first.permission.label}'
+            : '${changes.length} permissions changed for ${member.name}',
+        oldValue: changes.length == 1 ? first.from : null,
+        newValue: changes.length == 1 ? first.to : '${changes.length} changes',
       );
     }
     Get.back(result: result);
