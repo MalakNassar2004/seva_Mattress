@@ -51,4 +51,13 @@ abstract class AppRoutes {
 
   /// arguments: {'supplierId': id} or {'number': draft PO number}.
   static const String poForm = '/po-form';
+
+  // ---------------- Staff ----------------
+  static const String staff = '/staff';
+
+  /// arguments: staff id (edit) or nothing (add).
+  static const String staffForm = '/staff-form';
+
+  /// arguments: PermissionsArgs. Returns PermissionsResult when applied.
+  static const String permissions = '/permissions';
 }

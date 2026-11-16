@@ -25,6 +25,10 @@ import '../../modules/suppliers/supplier_detail_view.dart';
 import '../../modules/suppliers/supplier_form_view.dart';
 import '../../modules/suppliers/suppliers_binding.dart';
 import '../../modules/suppliers/suppliers_view.dart';
+import '../../modules/staff/permissions_view.dart';
+import '../../modules/staff/staff_binding.dart';
+import '../../modules/staff/staff_form_view.dart';
+import '../../modules/staff/staff_view.dart';
 import '../../modules/splash/splash_binding.dart';
 import '../../modules/splash/splash_view.dart';
 import 'app_routes.dart';
@@ -164,6 +168,26 @@ class AppPages {
       name: AppRoutes.poForm,
       page: () => const PoFormView(),
       binding: PoFormBinding(),
+      transition: _transition,
+    ),
+
+    // ---------------- Staff ----------------
+    GetPage(
+      name: AppRoutes.staff,
+      page: () => const StaffView(),
+      binding: StaffBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.staffForm,
+      page: () => const StaffFormView(),
+      binding: StaffFormBinding(),
+      transition: _transition,
+    ),
+    GetPage(
+      name: AppRoutes.permissions,
+      page: () => const PermissionsView(),
+      binding: PermissionsBinding(),
       transition: _transition,
     ),
   ];

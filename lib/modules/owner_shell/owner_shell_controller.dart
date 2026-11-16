@@ -29,4 +29,5 @@ class OwnerShellController extends GetxController {
   void onDeliveriesPressed() => Get.toNamed(AppRoutes.deliveries);
   void onSuppliersPressed() => Get.toNamed(AppRoutes.suppliers);
   void onPurchaseOrdersPressed() => Get.toNamed(AppRoutes.purchaseOrders);
+  void onStaffPressed() => Get.toNamed(AppRoutes.staff);
 }

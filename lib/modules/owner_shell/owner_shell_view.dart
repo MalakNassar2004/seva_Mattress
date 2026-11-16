@@ -49,6 +49,7 @@ class OwnerShellView extends GetView<OwnerShellController> {
                           ('Customers', controller.onCustomersPressed),
                           ('Deliveries', controller.onDeliveriesPressed),
                           ('Suppliers', controller.onSuppliersPressed),
+                          ('Staff', controller.onStaffPressed),
                           ('Purchase Orders', controller.onPurchaseOrdersPressed),
                         ],
                       ),
