@@ -30,6 +30,8 @@ class CustomersView extends GetView<CustomersController> {
             children: [
               Expanded(
                 child: SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                   padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,16 +39,18 @@ class CustomersView extends GetView<CustomersController> {
                       _buildHeader(),
                       SizedBox(height: 14.h),
                       OwnerSearchField(
-                        hint: 'Search name, phone, email, or postal code',
+                        hint: 'Search name, phone, email or city',
                         onChanged: controller.onSearchChanged,
                         onScan: controller.onScanPressed,
                       ),
                       SizedBox(height: 12.h),
                       _buildFilters(),
                       SizedBox(height: 14.h),
-                      Obx(
-                        () => Column(
-                          children: controller.customers
+                      Obx(() {
+                        final list = controller.customers;
+                        if (list.isEmpty) return _buildEmpty();
+                        return Column(
+                          children: list
                               .map(
                                 (c) => Padding(
                                   padding: EdgeInsets.only(bottom: 12.h),
@@ -54,9 +58,8 @@ class CustomersView extends GetView<CustomersController> {
                                 ),
                               )
                               .toList(),
-                        ),
-                      ),
-                      _buildInfoCard(),
+                        );
+                      }),
                     ],
                   ),
                 ),
@@ -114,14 +117,15 @@ class CustomersView extends GetView<CustomersController> {
             Expanded(
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: StatusPill(
-                  text:
-                      'Surrey Flagship · ${CustomersController.totalClients} Clients',
-                  dot: true,
-                  fg: AppColors.deepBlue,
-                  bg: AppColors.lightBlue,
-                  border: AppColorsExtra.infoBorder,
-                  fontSize: 11,
+                child: Obx(
+                  () => StatusPill(
+                    text: '${controller.totalCount.value} Clients',
+                    dot: true,
+                    fg: AppColors.deepBlue,
+                    bg: AppColors.lightBlue,
+                    border: AppColorsExtra.infoBorder,
+                    fontSize: 11,
+                  ),
                 ),
               ),
             ),
@@ -133,25 +137,13 @@ class CustomersView extends GetView<CustomersController> {
           ],
         ),
         SizedBox(height: 14.h),
-        Row(
-          children: [
-            Text(
-              'Customers',
-              style: TextStyle(
-                fontSize: 28.sp,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textDark,
-              ),
-            ),
-            const Spacer(),
-            StatusPill(
-              text: 'PCI-DSS L1',
-              icon: Icons.lock_outline,
-              fg: AppColors.grey,
-              bg: AppColorsExtra.chipGrey,
-              fontSize: 10.5,
-            ),
-          ],
+        Text(
+          'Customers',
+          style: TextStyle(
+            fontSize: 28.sp,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textDark,
+          ),
         ),
         SizedBox(height: 2.h),
         Text(
@@ -169,7 +161,7 @@ class CustomersView extends GetView<CustomersController> {
         () => Row(
           children: List.generate(CustomersController.filters.length, (i) {
             final selected = controller.filterIndex.value == i;
-            final isBalance = i == 1;
+            final isBalance = i == CustomersController.balanceFilter;
 
             final Color bg;
             final Color fg;
@@ -226,6 +218,57 @@ class CustomersView extends GetView<CustomersController> {
             );
           }),
         ),
+      ),
+    );
+  }
+
+  /// Shown when the list is empty. Called inside an Obx, so the observables
+  /// read here are tracked.
+  Widget _buildEmpty() {
+    if (controller.isLoading.value) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 40.h),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final String message;
+    if (controller.loadError.value != null) {
+      message = 'Could not load the customers. Check your connection.';
+    } else if (controller.totalCount.value == 0) {
+      message = 'No customers yet. Tap "+ Add Customer" to add the first one.';
+    } else if (controller.filterIndex.value ==
+        CustomersController.balanceFilter) {
+      message = 'No customers with a balance owing.';
+    } else {
+      message = 'No customers match your search.';
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 32.h),
+      child: Column(
+        children: [
+          Container(
+            width: 64.w,
+            height: 64.w,
+            decoration: const BoxDecoration(
+              color: AppColors.lightBlue,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.people_outline,
+                size: 28.sp, color: AppColors.primaryBlue),
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textDark,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -317,7 +360,7 @@ class CustomersView extends GetView<CustomersController> {
                           SizedBox(width: 4.w),
                           Flexible(
                             child: Text(
-                              '${c.phone} • ${c.city}',
+                              c.city.isEmpty ? c.phone : '${c.phone} • ${c.city}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -353,114 +396,70 @@ class CustomersView extends GetView<CustomersController> {
                           color: AppColors.textDark,
                         ),
                       ),
-                      SizedBox(height: 2.h),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (c.noteIcon != null) ...[
-                            Icon(
-                              c.noteIcon,
-                              size: 13.sp,
-                              color: c.noteIsAccent
-                                  ? AppColors.primaryBlue
-                                  : AppColors.grey,
-                            ),
-                            SizedBox(width: 4.w),
-                          ],
-                          Flexible(
-                            child: Text(
-                              c.note,
-                              style: TextStyle(
-                                fontSize: 11.sp,
-                                height: 1.25,
-                                fontWeight: c.noteIsAccent
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
+                      if (c.note.isNotEmpty) ...[
+                        SizedBox(height: 2.h),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (c.noteIcon != null) ...[
+                              Icon(
+                                c.noteIcon,
+                                size: 13.sp,
                                 color: c.noteIsAccent
                                     ? AppColors.primaryBlue
                                     : AppColors.grey,
                               ),
+                              SizedBox(width: 4.w),
+                            ],
+                            Flexible(
+                              child: Text(
+                                c.note,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  height: 1.25,
+                                  fontWeight: c.noteIsAccent
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                  color: c.noteIsAccent
+                                      ? AppColors.primaryBlue
+                                      : AppColors.grey,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
-                SizedBox(width: 8.w),
-                c.balanceOwing == null
-                    ? StatusPill(
-                        text: 'Paid in Full',
-                        icon: Icons.check_circle,
-                        fg: AppColors.success,
-                        bg: AppColors.successBg,
-                        border: AppColorsExtra.successBorder,
-                      )
-                    : Flexible(
-                        child: StatusPill(
-                          text:
-                              'Balance Owing: ${formatCad(c.balanceOwing!)} CAD',
-                          icon: Icons.warning_amber_rounded,
-                          fg: AppColors.warning,
-                          bg: AppColors.warningBg,
-                          border: AppColorsExtra.warningBorder,
-                          maxLines: 2,
+                if (c.orderCount > 0) ...[
+                  SizedBox(width: 8.w),
+                  c.balanceOwing == null
+                      ? StatusPill(
+                          text: 'Paid in Full',
+                          icon: Icons.check_circle,
+                          fg: AppColors.success,
+                          bg: AppColors.successBg,
+                          border: AppColorsExtra.successBorder,
+                        )
+                      : Flexible(
+                          child: StatusPill(
+                            text:
+                                'Balance Owing: ${formatCad(c.balanceOwing!)} CAD',
+                            icon: Icons.warning_amber_rounded,
+                            fg: AppColors.warning,
+                            bg: AppColors.warningBg,
+                            border: AppColorsExtra.warningBorder,
+                            maxLines: 2,
+                          ),
                         ),
-                      ),
+                ],
               ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildInfoCard() {
-    return Container(
-      padding: EdgeInsets.all(14.w),
-      decoration: BoxDecoration(
-        color: AppColorsExtra.panelGrey,
-        borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: AppColorsExtra.panelBorder),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40.w,
-            height: 40.w,
-            decoration: const BoxDecoration(
-              color: AppColors.lightBlue,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.storefront_outlined,
-                size: 20.sp, color: AppColors.primaryBlue),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Looking for Sleep Trial Exchanges?',
-                  style: TextStyle(
-                    fontSize: 12.5.sp,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  'Tap any customer card to review their 100-Night Comfort Guarantee status.',
-                  style: TextStyle(
-                    fontSize: 11.sp,
-                    height: 1.3,
-                    color: AppColors.grey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

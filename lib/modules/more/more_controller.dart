@@ -1,6 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/data/services/session_service.dart';
+import 'package:seva_mattress/modules/auth/app_lock_controller.dart';
 import '../../app/routes/app_routes.dart';
+import '../../app/utils/names.dart';
 import '../../app/widgets/page_widgets.dart';
 import '../staff/permissions_controller.dart';
 import '../staff/pick_staff_sheet.dart';
@@ -8,19 +12,52 @@ import '../staff/staff_store.dart';
 
 /// More tab (owner menu). Lives inside the owner shell, so its controller
 /// is registered by OwnerShellBinding.
-/// UI state only. Backend wiring is marked with TODO(backend).
 class MoreController extends GetxController {
-  final staffStore = StaffStore.to;
+  /// The staff list is still demo data: it is only touched when the Staff
+  /// tile is visible (see FeatureFlags).
+  StaffStore get staffStore => StaffStore.to;
 
-  // ---------------- Mock data ----------------
-  // TODO(backend): load the signed-in owner profile.
-  static const String ownerInitials = 'OW';
-  static const String storeName = 'Surrey Flagship Showroom';
-  static const String storeAddress = '15280 104 Ave, Surrey, BC';
-  static const String ownerPin = '#OWN-001';
+  static const String storeName = 'Seva Sleep Products Inc.';
+
+  // ---------------- The signed-in employee ----------------
+  final userName = ''.obs;
+  final userEmail = ''.obs;
+  final userRole = ''.obs;
+
+  String get displayName {
+    final n = userName.value.trim();
+    if (n.isNotEmpty) return n;
+    final e = userEmail.value;
+    if (e.contains('@')) return e.split('@').first;
+    return 'Account';
+  }
+
+  String get initials => initialsOf(displayName);
+
+  String get roleLabel =>
+      userRole.value.isEmpty ? '' : userRole.value.toUpperCase();
 
   int get staffCount => staffStore.staff.where((s) => s.active).length;
   int get onShiftCount => staffStore.staff.where((s) => s.onShift).length;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    userEmail.value = FirebaseAuth.instance.currentUser?.email ?? '';
+    try {
+      final user = await SessionService().loadCurrentUser();
+      if (user == null) return;
+      userName.value = user.name;
+      userRole.value = user.role;
+      if (user.email.isNotEmpty) userEmail.value = user.email;
+    } catch (_) {
+      // The card still shows the email from the sign-in.
+    }
+  }
 
   // ---------------- Navigation ----------------
   void onCustomers() => Get.toNamed(AppRoutes.customers);
@@ -40,21 +77,21 @@ class MoreController extends GetxController {
 
   void onApprovals() => Get.toNamed(AppRoutes.approvals);
 
-  /// Locks the app and asks for a PIN (another employee can sign in).
-  void onSwitchUser() => Get.offAllNamed(AppRoutes.pin);
+  /// "Switch user": a REAL sign out, so another employee can sign in.
+  Future<void> onSwitchUser() =>
+      Get.find<AppLockController>().signOutAndExit();
 
   Future<void> onSignOut() async {
     final ok = await showConfirmSheet(
       title: 'Sign out?',
       message:
-          'This ends the owner session on this device. You will need '
-          'your email and password to sign in again.',
+          'This ends your session on this device. You will need your email '
+          'and password to sign in again.',
       confirmLabel: 'Sign out',
       icon: Icons.logout,
       danger: true,
     );
     if (!ok) return;
-    // TODO(backend): revoke the session token.
-    Get.offAllNamed(AppRoutes.login);
+    await Get.find<AppLockController>().signOutAndExit();
   }
 }

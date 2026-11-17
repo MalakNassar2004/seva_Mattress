@@ -1,58 +1,143 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/data/repositories/customer_repository.dart';
 import '../../app/routes/app_routes.dart';
 import '../owner_shell/owner_nav.dart';
+import 'customer_form_sheet.dart';
 import 'customer_models.dart';
-import 'customers_mock.dart';
 
-/// Customers list (opened from the More tab).
-/// UI state only. Backend wiring is marked with TODO(backend).
+/// Customers list (opened from the More tab). Live from Firestore.
 class CustomersController extends GetxController {
   // ---------------- State ----------------
   /// Index 1 is drawn as the amber "balance owing" chip.
   static const List<String> filters = [
     'All',
     'Balance Owing',
-    'VIP',
     'Recent',
-    'Sleep Trial',
   ];
+  static const int balanceFilter = 1;
+  static const int recentFilter = 2;
 
   final filterIndex = 0.obs;
 
-  // ---------------- Mock data ----------------
-  // TODO(backend): load the customers and the total from the API.
-  static const int totalClients = CustomersMock.totalClients;
+  /// What the list shows (after filter and search).
+  final customers = <CustomerItem>[].obs;
 
-  final customers = <CustomerItem>[...CustomersMock.customers].obs;
+  /// Number of customers in total.
+  final totalCount = 0.obs;
+
+  final isLoading = true.obs;
+  final loadError = RxnString();
+
+  final _repo = CustomerRepository();
+  final List<CustomerItem> _all = [];
+  String _query = '';
+  StreamSubscription<List<CustomerItem>>? _sub;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _listen();
+  }
+
+  @override
+  void onClose() {
+    _sub?.cancel();
+    super.onClose();
+  }
+
+  void _listen() {
+    isLoading.value = true;
+    _sub = _repo.watchCustomers().listen(
+          (list) {
+        _all
+          ..clear()
+          ..addAll(list);
+        isLoading.value = false;
+        loadError.value = null;
+        _refresh();
+      },
+      onError: (Object e) {
+        isLoading.value = false;
+        loadError.value = describeCustomerError(e);
+        _showMessage('Could not load customers', describeCustomerError(e));
+      },
+    );
+  }
+
+  /// Rebuilds the visible list from the full list.
+  void _refresh() {
+    totalCount.value = _all.length;
+
+    final q = _query.trim().toLowerCase();
+    final digits = q.replaceAll(RegExp(r'\D'), '');
+
+    var list = _all.where((c) {
+      if (q.isEmpty) return true;
+      return c.name.toLowerCase().contains(q) ||
+          c.email.toLowerCase().contains(q) ||
+          c.city.toLowerCase().contains(q) ||
+          (digits.length >= 3 && c.phoneKey.contains(digits));
+    }).toList();
+
+    final f = filterIndex.value;
+    if (f == balanceFilter) {
+      list = list.where((c) => (c.balanceOwing ?? 0) > 0).toList();
+    }
+
+    if (f == recentFilter) {
+      final now = DateTime.now();
+      list.sort((a, b) => (b.createdAt ?? now).compareTo(a.createdAt ?? now));
+    } else {
+      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    }
+    customers.assignAll(list);
+  }
 
   // ---------------- Actions ----------------
   void selectFilter(int i) {
     filterIndex.value = i;
-    // TODO(backend): filter the customers list.
+    _refresh();
   }
 
   void onSearchChanged(String query) {
-    // TODO(backend): search by name, phone, email or postal code.
+    _query = query;
+    _refresh();
   }
 
   void onScanPressed() {
-    // TODO(backend): scan a receipt / loyalty card and open that customer.
+    // TODO(design): scanning a loyalty card is not defined yet.
   }
 
-  void onSyncPressed() {
-    // TODO(backend): sync the customers list.
+  /// Reloads the list (it is live, so this is rarely needed).
+  Future<void> onSyncPressed() async {
+    await _sub?.cancel();
+    _listen();
   }
 
-  void onAddCustomerPressed() {
-    // TODO(backend): open the Add Customer form (not designed yet) and save.
+  Future<void> onAddCustomerPressed() async {
+    final saved = await CustomerFormSheet.open();
+    if (saved != null) {
+      _showMessage('Saved', '${saved.name} was added.');
+    }
   }
 
   // ---------------- Navigation ----------------
   void onBackPressed() => Get.back();
 
-  // TODO(backend): pass the customer (or its id) so the detail page loads it.
   void onCustomerTap(CustomerItem customer) =>
-      Get.toNamed(AppRoutes.customerDetail);
+      Get.toNamed(AppRoutes.customerDetail, arguments: customer);
 
   void onNavTap(int index) => OwnerNav.goToTab(index);
+
+  void _showMessage(String title, String message) {
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+    );
+  }
 }
