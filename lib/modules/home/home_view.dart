@@ -15,6 +15,11 @@ import '../sales/sales_models.dart';
 import '../sales/sales_store.dart';
 import 'home_controller.dart';
 
+/// false = the 3rd quick action is "Add Customer".
+/// true  = it is "Create PO" (Marwa's original). Keep it false while the
+///         purchasing screens (suppliers and purchase orders) are hidden.
+const bool _showPurchasing = false;
+
 /// Owner Home (dashboard). Lives in the Home tab of the owner shell, so it
 /// does not draw the bottom navigation.
 class HomeView extends GetView<HomeController> {
@@ -27,10 +32,12 @@ class HomeView extends GetView<HomeController> {
         child: SafeArea(
           bottom: false,
           child: Obx(() {
-            // Touch the stores so totals refresh after refunds / approvals.
-            controller.sales.sales.length;
-            controller.approvals.requests.length;
-            controller.audit.events.length;
+            // Touch the live data so the totals refresh when it changes.
+            controller.orders.length;
+            controller.events.length;
+            controller.methodCents.length;
+            controller.userName.value;
+            controller.storeName.value;
             final loading = controller.loading.value;
             final stats = controller.stats;
             return ListView(
@@ -72,7 +79,7 @@ class HomeView extends GetView<HomeController> {
                 if (!loading) ...[
                   SizedBox(height: 14.h),
                   _buildAttention(),
-                  if (!stats.isEmpty) ...[
+                  if (!stats.isEmpty && controller.hasPayments) ...[
                     SizedBox(height: 14.h),
                     _buildPayments(stats),
                   ],
@@ -82,7 +89,7 @@ class HomeView extends GetView<HomeController> {
                   _buildRecent(),
                 ],
                 SizedBox(height: 14.h),
-                const AuditNote('PCI-DSS Level 1 Encrypted · Seva POS'),
+                const AuditNote('Figures come from your orders · updated live'),
               ],
             );
           }),
@@ -110,7 +117,7 @@ class HomeView extends GetView<HomeController> {
     final hidden = controller.hidden.value;
     return Row(
       children: [
-        const InitialsAvatar(initials: 'OW', size: 46),
+        InitialsAvatar(initials: controller.initials, size: 46),
         SizedBox(width: 12.w),
         Expanded(
           child: Column(
@@ -127,8 +134,8 @@ class HomeView extends GetView<HomeController> {
                 ),
               ),
               SizedBox(height: 4.h),
-              const StatusPill(
-                text: 'Surrey Store',
+              StatusPill(
+                text: controller.storeName.value,
                 dot: true,
                 fg: AppColors.success,
                 bg: AppColors.white,
@@ -152,7 +159,7 @@ class HomeView extends GetView<HomeController> {
               icon: Icons.notifications_none,
               onTap: controller.onApprovals,
             ),
-            if (controller.approvals.pendingCount > 0)
+            if (controller.pendingApprovals > 0)
               Positioned(
                 right: 9.w,
                 top: 9.w,
@@ -258,13 +265,13 @@ class HomeView extends GetView<HomeController> {
         icon: Icons.account_balance_outlined,
         label: 'Taxes Collected',
         value: m(s.taxes),
-        sub: 'GST 5% + PST 7%',
+        sub: controller.taxSplitLabel,
       ),
       _KpiTile(
         icon: Icons.credit_card,
         label: 'Payments Collected',
         value: m(s.collected),
-        sub: 'Card, cash & other',
+        sub: 'Paid on these orders',
       ),
       _KpiTile(
         icon: Icons.schedule,
@@ -295,9 +302,11 @@ class HomeView extends GetView<HomeController> {
 
   // ---------------- Needs your attention ----------------
   Widget _buildAttention() {
-    final pending = controller.approvals.pendingCount;
+    final pending = controller.pendingApprovals;
     final low = controller.lowStockCount;
-    final failed = controller.failedDeliveries;
+    final overdue = controller.overdueCount;
+    final soon = controller.dueSoonCount;
+    final today = controller.deliveriesTodayCount;
     final rows = <Widget>[
       if (pending > 0)
         _AttentionRow(
@@ -308,6 +317,33 @@ class HomeView extends GetView<HomeController> {
           bg: AppColors.lightBlue,
           onTap: controller.onApprovals,
         ),
+      if (overdue > 0)
+        _AttentionRow(
+          badge: '$overdue',
+          title: '$overdue overdue payment${overdue == 1 ? '' : 's'}',
+          subtitle: 'Past the next payment date',
+          fg: AppColors.danger,
+          bg: AppColorsExtra.dangerSoft,
+          onTap: controller.onOrders,
+        ),
+      if (soon > 0)
+        _AttentionRow(
+          badge: '$soon',
+          title: '$soon payment${soon == 1 ? '' : 's'} due this week',
+          subtitle: 'Due in the next 7 days',
+          fg: AppColorsExtra.amberText,
+          bg: AppColorsExtra.amberSoft,
+          onTap: controller.onOrders,
+        ),
+      if (today > 0)
+        _AttentionRow(
+          badge: '$today',
+          title: '$today deliver${today == 1 ? 'y' : 'ies'} today',
+          subtitle: 'Scheduled or out for delivery',
+          fg: AppColors.primaryBlue,
+          bg: AppColors.lightBlue,
+          onTap: controller.onDeliveriesToday,
+        ),
       if (low > 0)
         _AttentionRow(
           badge: '$low',
@@ -316,15 +352,6 @@ class HomeView extends GetView<HomeController> {
           fg: AppColorsExtra.amberText,
           bg: AppColorsExtra.amberSoft,
           onTap: controller.onLowStock,
-        ),
-      if (failed > 0)
-        _AttentionRow(
-          badge: '$failed',
-          title: '$failed failed deliver${failed == 1 ? 'y' : 'ies'}',
-          subtitle: 'Reschedule or contact the customer',
-          fg: AppColors.danger,
-          bg: AppColorsExtra.dangerSoft,
-          onTap: controller.onFailedDeliveries,
         ),
     ];
     return SectionCard(
@@ -501,7 +528,14 @@ class HomeView extends GetView<HomeController> {
                 'Add Employee',
                 controller.onAddEmployee,
               ),
-              action(Icons.post_add, 'Create PO', controller.onCreatePo),
+              if (_showPurchasing)
+                action(Icons.post_add, 'Create PO', controller.onCreatePo)
+              else
+                action(
+                  Icons.group_add_outlined,
+                  'Add Customer',
+                  controller.onAddCustomer,
+                ),
               action(Icons.download_outlined, 'Export', controller.onExport),
             ],
           ),

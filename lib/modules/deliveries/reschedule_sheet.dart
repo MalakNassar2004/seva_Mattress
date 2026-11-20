@@ -17,7 +17,7 @@ class RescheduleController extends GetxController {
   final Delivery? delivery;
   final List<Delivery> candidates;
 
-  static const List<DispatchDay> days = DeliveriesMock.days;
+  static List<DispatchDay> get days => DeliveriesMock.days;
   static const int todayIndex = DeliveriesMock.todayIndex;
   static const List<String> windows = DeliveriesMock.windows;
   static const List<String> reasons = DeliveriesMock.failReasons;
@@ -71,11 +71,9 @@ class RescheduleController extends GetxController {
   void selectWindow(int i) => windowIndex.value = i;
   void toggleNotify(bool v) => notifyCustomer.value = v;
 
-  /// Opens the full calendar. Only the days on the dispatch board can be
-  /// picked in the mock.
+  /// Opens the full calendar. Any day on the dispatch strip can be picked.
   Future<void> onPickDatePressed(BuildContext context) async {
-    // TODO(backend): allow any future date once the API returns slots.
-    DateTime toDate(DispatchDay d) => DateTime(2024, 10, d.day);
+    DateTime toDate(DispatchDay d) => DeliveriesMock.dateOf(days.indexOf(d));
     final picked = await showDatePicker(
       context: context,
       initialDate: toDate(days[dayIndex.value]),
@@ -91,8 +89,11 @@ class RescheduleController extends GetxController {
       ),
     );
     if (picked == null) return;
-    final i = days.indexWhere((d) => d.day == picked.day);
-    if (i >= 0) dayIndex.value = i;
+    final f = DeliveriesMock.firstDay;
+    final i = DateTime.utc(picked.year, picked.month, picked.day)
+        .difference(DateTime.utc(f.year, f.month, f.day))
+        .inDays;
+    if (i >= todayIndex && i < days.length) dayIndex.value = i;
   }
 
   void onConfirm() {
@@ -115,12 +116,6 @@ class RescheduleController extends GetxController {
   }
 
   void onClosePressed() => Get.back();
-
-  @override
-  void onClose() {
-    noteController.dispose();
-    super.onClose();
-  }
 }
 
 /// Bottom sheet: Reschedule Delivery / Schedule Delivery.
@@ -135,16 +130,19 @@ class RescheduleSheet extends GetView<RescheduleController> {
   static Future<RescheduleResult?> openSchedule(List<Delivery> pending) =>
       _open(RescheduleController(candidates: pending));
 
-  static Future<RescheduleResult?> _open(RescheduleController c) async {
+  static Future<RescheduleResult?> _open(RescheduleController c) {
+    // Not deleted when the sheet closes (the closing animation is still
+    // drawing it). The next open replaces it.
+    if (Get.isRegistered<RescheduleController>()) {
+      Get.delete<RescheduleController>(force: true);
+    }
     Get.put(c);
-    final result = await Get.bottomSheet<RescheduleResult>(
+    return Get.bottomSheet<RescheduleResult>(
       const RescheduleSheet(),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black54,
     );
-    Get.delete<RescheduleController>();
-    return result;
   }
 
   @override

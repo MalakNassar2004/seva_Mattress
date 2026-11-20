@@ -5,6 +5,7 @@ import 'package:seva_mattress/data/repositories/product_repository.dart'
 import 'package:seva_mattress/modules/customers/customer_models.dart';
 
 /// Thrown when a phone number already belongs to another customer.
+/// (Used by the order form, which only checks the phone.)
 class PhoneTakenException implements Exception {
   PhoneTakenException(this.phone, this.customerName);
 
@@ -16,19 +17,61 @@ class PhoneTakenException implements Exception {
       'The phone $phone already belongs to "$customerName".';
 }
 
+/// Thrown when the phone and/or the email already belong to other customers.
+/// Both are reported together, so the form can show each error under its own
+/// field in one go.
+class CustomerConflictException implements Exception {
+  CustomerConflictException({this.phoneOwner, this.emailOwner});
+
+  /// Name of the customer who owns the phone (null = the phone is free).
+  final String? phoneOwner;
+
+  /// Name of the customer who owns the email (null = the email is free).
+  final String? emailOwner;
+
+  bool get phoneTaken => phoneOwner != null;
+  bool get emailTaken => emailOwner != null;
+
+  @override
+  String toString() => 'Customer conflict: phone=$phoneOwner email=$emailOwner';
+}
+
+final RegExp _emailPattern = RegExp(r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$');
+
+/// The email in lower case, used as the unique key of an email. Returns null
+/// when [raw] is empty or is not a valid email.
+/// "Ali@Gmail.com" and "ali@gmail.com" are the same email.
+String? normalizeEmail(String raw) {
+  final e = raw.trim().toLowerCase();
+  if (e.isEmpty || e.length > 120) return null;
+  return _emailPattern.hasMatch(e) ? e : null;
+}
+
 /// Turns an error into a short message that is safe to show to the user.
 String describeCustomerError(Object e) {
-  if (e is PhoneTakenException) {
-    return 'This phone number already belongs to ${e.customerName}.';
+  if (e is CustomerConflictException) {
+    final parts = <String>[
+      if (e.phoneTaken)
+        'This phone number is already used by ${e.phoneOwner}.',
+      if (e.emailTaken) 'This email is already used by ${e.emailOwner}.',
+    ];
+    return parts.join(' ');
   }
+  if (e is PhoneTakenException) {
+    return 'This phone number is already used by ${e.customerName}.';
+  }
+  if (e is StateError) return e.message;
   return describeError(e);
 }
 
 /// All Firestore access for customers.
 ///
 /// Every phone number has its own document in `customer_phones` (the
-/// document id is the 10 digits). It is created in the same transaction as
-/// the customer, so two customers can never share a phone.
+/// document id is the digits), and every email has one in `customer_emails`
+/// (the document id is the email in lower case). Each is created in the same
+/// transaction as the customer, so two customers can never share a phone or
+/// an email. Every customer also gets the next number (CUST-0001...) from
+/// the `customers` counter, in the same transaction.
 class CustomerRepository {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -37,6 +80,12 @@ class CustomerRepository {
 
   CollectionReference<Map<String, dynamic>> get _phones =>
       _db.collection('customer_phones');
+
+  CollectionReference<Map<String, dynamic>> get _emails =>
+      _db.collection('customer_emails');
+
+  CollectionReference<Map<String, dynamic>> get _counters =>
+      _db.collection('counters');
 
   CollectionReference<Map<String, dynamic>> get _audit =>
       _db.collection('audit_log');
@@ -114,31 +163,43 @@ class CustomerRepository {
     };
   }
 
-  Map<String, dynamic> _claim(String phoneKey, String customerId) => {
+  Map<String, dynamic> _phoneClaim(String phoneKey, String customerId) => {
     'phone': phoneKey,
     'customerId': customerId,
     'createdAt': FieldValue.serverTimestamp(),
     'createdBy': _user?.uid,
   };
 
-  Future<PhoneTakenException> _takenBy(
+  Map<String, dynamic> _emailClaim(String emailKey, String customerId) => {
+    'email': emailKey,
+    'customerId': customerId,
+    'createdAt': FieldValue.serverTimestamp(),
+    'createdBy': _user?.uid,
+  };
+
+  /// Name of the customer who owns a phone / email claim.
+  Future<String> _ownerName(
       Transaction tx,
-      String phoneKey,
       Map<String, dynamic>? claim,
       ) async {
     final otherId = claim?['customerId'] as String?;
-    var name = '';
-    if (otherId != null) {
-      final other = await tx.get(_customers.doc(otherId));
-      name = (other.data()?['name'] as String?) ?? '';
-    }
-    return PhoneTakenException(
-      formatPhone(phoneKey),
-      name.isEmpty ? 'another customer' : name,
-    );
+    if (otherId == null) return 'another customer';
+    final other = await tx.get(_customers.doc(otherId));
+    final name = (other.data()?['name'] as String?) ?? '';
+    return name.isEmpty ? 'another customer' : name;
   }
 
-  /// Creates a customer with id [id] ([phoneKey] = the 10 digits).
+  /// The key of the email, null when there is no email. Throws when the
+  /// email is not valid.
+  String? _emailKeyOf(String email) {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) return null;
+    final key = normalizeEmail(trimmed);
+    if (key == null) throw StateError('This email address is not valid.');
+    return key;
+  }
+
+  /// Creates a customer with id [id] ([phoneKey] = the digits).
   Future<CustomerItem> create(
       String id, {
         required String name,
@@ -149,8 +210,9 @@ class CustomerRepository {
         String notes = '',
       }) async {
     if (normalizePhone(phoneKey) != phoneKey) {
-      throw StateError('Enter a valid 10-digit phone number.');
+      throw StateError('This phone number is not valid.');
     }
+    final emailKey = _emailKeyOf(email);
 
     final ref = _customers.doc(id);
     final data = _fields(
@@ -161,41 +223,89 @@ class CustomerRepository {
       address: address,
       notes: notes,
     );
+    String? number;
 
     await _db.runTransaction((tx) async {
-      // All reads first.
+      // ---------- reads ----------
       final existing = await tx.get(ref);
-      if (existing.exists) return; // a retry of a save that already went through
+      if (existing.exists) {
+        // A retry of a save that already went through.
+        number = existing.data()?['number'] as String?;
+        return;
+      }
 
-      final claimRef = _phones.doc(phoneKey);
-      final claim = await tx.get(claimRef);
-      if (claim.exists) throw await _takenBy(tx, phoneKey, claim.data());
+      final counterRef = _counters.doc('customers');
+      final counter = await tx.get(counterRef);
+      final seq = ((counter.data()?['last'] as num?)?.toInt() ?? 0) + 1;
 
-      // Then the writes.
+      // Phone and email are both checked, then reported together.
+      final phoneRef = _phones.doc(phoneKey);
+      final phoneClaim = await tx.get(phoneRef);
+      String? phoneOwner;
+      if (phoneClaim.exists) {
+        phoneOwner = await _ownerName(tx, phoneClaim.data());
+      }
+
+      DocumentReference<Map<String, dynamic>>? emailRef;
+      String? emailOwner;
+      if (emailKey != null) {
+        emailRef = _emails.doc(emailKey);
+        final emailClaim = await tx.get(emailRef);
+        if (emailClaim.exists) {
+          emailOwner = await _ownerName(tx, emailClaim.data());
+        }
+      }
+
+      if (phoneOwner != null || emailOwner != null) {
+        throw CustomerConflictException(
+          phoneOwner: phoneOwner,
+          emailOwner: emailOwner,
+        );
+      }
+
+      // ---------- writes ----------
+      final customerNumber = customerNumberOf(seq);
+      number = customerNumber;
+
+      if (counter.exists) {
+        tx.update(counterRef, {'last': seq});
+      } else {
+        tx.set(counterRef, {'last': seq});
+      }
       tx.set(ref, {
         ...data,
+        'number': customerNumber,
+        'seq': seq,
         'deleted': false,
         'createdAt': FieldValue.serverTimestamp(),
         'createdBy': _user?.uid,
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': _user?.uid,
       });
-      tx.set(claimRef, _claim(phoneKey, id));
+      tx.set(phoneRef, _phoneClaim(phoneKey, id));
+      if (emailRef != null && emailKey != null) {
+        tx.set(emailRef, _emailClaim(emailKey, id));
+      }
       tx.set(
         _audit.doc(),
         _auditEntry(
           type: 'customer_created',
           customerId: id,
           customerName: name,
-          details: {'phone': phoneKey},
+          details: {'phone': phoneKey, 'number': customerNumber},
         ),
       );
     });
 
-    return customerFromMap(id, data, createdAt: DateTime.now());
+    return customerFromMap(
+      id,
+      {...data, 'number': number ?? ''},
+      createdAt: DateTime.now(),
+    );
   }
 
-  /// Updates a customer. Changed fields are written to the audit log.
+  /// Updates a customer. Changed fields are written to the audit log. A
+  /// customer saved before numbers existed gets his number now.
   Future<CustomerItem> update(
       String id, {
         required String name,
@@ -206,8 +316,9 @@ class CustomerRepository {
         String notes = '',
       }) async {
     if (normalizePhone(phoneKey) != phoneKey) {
-      throw StateError('Enter a valid 10-digit phone number.');
+      throw StateError('This phone number is not valid.');
     }
+    final emailKey = _emailKeyOf(email);
 
     final ref = _customers.doc(id);
     final data = _fields(
@@ -218,9 +329,10 @@ class CustomerRepository {
       address: address,
       notes: notes,
     );
+    String? number;
 
     await _db.runTransaction((tx) async {
-      // All reads first.
+      // ---------- reads ----------
       final snap = await tx.get(ref);
       final old = snap.data();
       if (!snap.exists || old == null || old['deleted'] == true) {
@@ -228,18 +340,57 @@ class CustomerRepository {
       }
       final o = old;
 
+      // Number: only a customer without one gets the next number.
+      final oldNumber = (o['number'] as String?) ?? '';
+      final counterRef = _counters.doc('customers');
+      DocumentSnapshot<Map<String, dynamic>>? counter;
+      int? newSeq;
+      if (oldNumber.isEmpty) {
+        counter = await tx.get(counterRef);
+        newSeq = ((counter.data()?['last'] as num?)?.toInt() ?? 0) + 1;
+      }
+
+      // Phone.
       final oldKey = (o['phone'] as String?) ?? '';
       final keyChanged = oldKey != phoneKey;
 
-      final newClaimRef = _phones.doc(phoneKey);
-      final newClaim = await tx.get(newClaimRef);
-      if (newClaim.exists && newClaim.data()?['customerId'] != id) {
-        throw await _takenBy(tx, phoneKey, newClaim.data());
+      final newPhoneRef = _phones.doc(phoneKey);
+      final newPhoneClaim = await tx.get(newPhoneRef);
+      String? phoneOwner;
+      if (newPhoneClaim.exists && newPhoneClaim.data()?['customerId'] != id) {
+        phoneOwner = await _ownerName(tx, newPhoneClaim.data());
       }
 
-      DocumentSnapshot<Map<String, dynamic>>? oldClaim;
+      // Email. A customer saved before emails were reserved has no claim yet:
+      // it is created now.
+      DocumentReference<Map<String, dynamic>>? newEmailRef;
+      DocumentSnapshot<Map<String, dynamic>>? newEmailClaim;
+      String? emailOwner;
+      if (emailKey != null) {
+        newEmailRef = _emails.doc(emailKey);
+        newEmailClaim = await tx.get(newEmailRef);
+        if (newEmailClaim.exists && newEmailClaim.data()?['customerId'] != id) {
+          emailOwner = await _ownerName(tx, newEmailClaim.data());
+        }
+      }
+
+      // Phone and email are both checked, then reported together.
+      if (phoneOwner != null || emailOwner != null) {
+        throw CustomerConflictException(
+          phoneOwner: phoneOwner,
+          emailOwner: emailOwner,
+        );
+      }
+
+      DocumentSnapshot<Map<String, dynamic>>? oldPhoneClaim;
       if (keyChanged && normalizePhone(oldKey) == oldKey) {
-        oldClaim = await tx.get(_phones.doc(oldKey));
+        oldPhoneClaim = await tx.get(_phones.doc(oldKey));
+      }
+
+      final oldEmailKey = normalizeEmail((o['email'] as String?) ?? '');
+      DocumentSnapshot<Map<String, dynamic>>? oldEmailClaim;
+      if (oldEmailKey != null && oldEmailKey != emailKey) {
+        oldEmailClaim = await tx.get(_emails.doc(oldEmailKey));
       }
 
       // What changed (for the audit log).
@@ -258,22 +409,49 @@ class CustomerRepository {
       diff('address', address);
       diff('notes', notes);
 
-      // Then the writes.
+      // ---------- writes ----------
+      final String assigned =
+      newSeq == null ? oldNumber : customerNumberOf(newSeq);
+      number = assigned;
+
+      if (counter != null && newSeq != null) {
+        if (counter.exists) {
+          tx.update(counterRef, {'last': newSeq});
+        } else {
+          tx.set(counterRef, {'last': newSeq});
+        }
+      }
+
       tx.update(ref, {
         ...data,
+        if (newSeq != null) ...{'number': assigned, 'seq': newSeq},
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': _user?.uid,
       });
 
       // A new phone, or a customer saved before phones were reserved.
-      if (!newClaim.exists) {
-        tx.set(newClaimRef, _claim(phoneKey, id));
+      if (!newPhoneClaim.exists) {
+        tx.set(newPhoneRef, _phoneClaim(phoneKey, id));
       }
       // The old phone becomes free for other customers.
-      if (oldClaim != null &&
-          oldClaim.exists &&
-          oldClaim.data()?['customerId'] == id) {
-        tx.delete(oldClaim.reference);
+      if (oldPhoneClaim != null &&
+          oldPhoneClaim.exists &&
+          oldPhoneClaim.data()?['customerId'] == id) {
+        tx.delete(oldPhoneClaim.reference);
+      }
+
+      // A new email, or a customer saved before emails were reserved.
+      if (newEmailRef != null &&
+          emailKey != null &&
+          newEmailClaim != null &&
+          !newEmailClaim.exists) {
+        tx.set(newEmailRef, _emailClaim(emailKey, id));
+      }
+      // The old email becomes free for other customers.
+      if (oldEmailClaim != null &&
+          oldEmailClaim.exists &&
+          oldEmailClaim.data()?['customerId'] == id) {
+        tx.delete(oldEmailClaim.reference);
       }
 
       if (changes.isNotEmpty) {
@@ -289,7 +467,7 @@ class CustomerRepository {
       }
     });
 
-    return customerFromMap(id, data);
+    return customerFromMap(id, {...data, 'number': number ?? ''});
   }
 
   Map<String, dynamic> _auditEntry({

@@ -1,7 +1,10 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/data/repositories/sales_repository.dart';
 import '../../app/utils/dates.dart';
-import 'sales_mock.dart';
 import 'sales_models.dart';
 
 enum SalesPeriod { today, week, month, custom }
@@ -107,22 +110,100 @@ class ProductTotal {
   double revenue = 0;
 }
 
-/// In-memory invoices shared by Home, Reports and Transactions.
-/// TODO(backend): replace with the sales API (reports come pre-aggregated).
+/// The sales of Reports and Transactions, built LIVE from the real orders
+/// (with their payments and timeline). Nothing here is sample data.
 class SalesStore extends GetxService {
   static SalesStore get to => Get.isRegistered<SalesStore>()
       ? Get.find<SalesStore>()
       : Get.put(SalesStore(), permanent: true);
 
-  final sales = <Sale>[...SalesMock.sales()].obs;
+  final sales = <Sale>[].obs;
+
+  /// false until the first orders arrive.
+  final loaded = false.obs;
+
+  /// Set when the orders cannot be read.
+  final error = RxnString();
+
+  final _repo = SalesRepository();
+
+  QuerySnapshot<Map<String, dynamic>>? _orders;
+  QuerySnapshot<Map<String, dynamic>>? _payments;
+  QuerySnapshot<Map<String, dynamic>>? _events;
+  Map<String, double>? _costs;
+  var _costsLoaded = false;
+
+  final _subs = <StreamSubscription<dynamic>>[];
+
+  @override
+  void onInit() {
+    super.onInit();
+    _subs.add(
+      _repo.watchOrders().listen(
+        (s) {
+          _orders = s;
+          error.value = null;
+          _rebuild();
+        },
+        onError: (Object e) => error.value = 'Could not load the sales.',
+      ),
+    );
+    _subs.add(
+      _repo.watchPayments().listen(
+        (s) {
+          _payments = s;
+          _rebuild();
+        },
+        onError: (Object _) {},
+      ),
+    );
+    _subs.add(
+      _repo.watchEvents().listen(
+        (s) {
+          _events = s;
+          _rebuild();
+        },
+        onError: (Object _) {},
+      ),
+    );
+    _repo.loadCosts().then((c) {
+      _costs = c;
+      _costsLoaded = true;
+      _rebuild();
+    });
+  }
+
+  @override
+  void onClose() {
+    for (final s in _subs) {
+      s.cancel();
+    }
+    super.onClose();
+  }
+
+  /// true when the cost prices could be read (only the owner can).
+  bool get hasCosts => _costsLoaded && _costs != null;
+
+  void _rebuild() {
+    final orders = _orders;
+    if (orders == null) return;
+    final pay = SalesRepository.groupPayments(_payments?.docs ?? const []);
+    final ev = SalesRepository.groupEvents(_events?.docs ?? const []);
+    sales.assignAll([
+      for (final d in orders.docs)
+        SalesRepository.toSale(
+          d.id,
+          d.data(),
+          payments: pay[d.id] ?? const [],
+          events: ev[d.id] ?? const [],
+          costs: _costs,
+        ),
+    ]);
+    loaded.value = true;
+  }
 
   Sale? byInvoice(String invoice) =>
       sales.firstWhereOrNull((s) => s.invoice == invoice);
-
-  void save(Sale s) {
-    final i = sales.indexWhere((x) => x.invoice == s.invoice);
-    if (i >= 0) sales[i] = s;
-  }
 
   // ---------------- Queries ----------------
   bool _inRange(Sale s, DateTimeRange r) {
@@ -187,7 +268,7 @@ class SalesStore extends GetxService {
     final days = r.end.difference(r.start).inDays + 1;
     final out = <SalesBucket>[];
     if (days == 1) {
-      for (var h = 10; h < 22; h += 2) {
+      for (var h = 8; h < 24; h += 2) {
         final start = r.start.add(Duration(hours: h));
         out.add(
           SalesBucket(
@@ -248,37 +329,6 @@ class SalesStore extends GetxService {
   }
 
   // ---------------- Actions ----------------
-  /// Records a refund. It stays "pending" until the payment provider
-  /// confirms. TODO(backend): POST /sales/{id}/refunds.
-  void refund(Sale s, {required double amount, required bool full}) {
-    save(
-      s.copyWith(
-        refunded: s.refunded + amount,
-        refundState: RefundState.pending,
-        status: full ? SaleStatus.refunded : s.status,
-        timeline: [
-          ...s.timeline,
-          SaleEvent(
-            full ? 'Full refund requested' : 'Partial refund requested',
-            'Owner',
-            DateTime.now(),
-            icon: Icons.undo,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// TODO(backend): POST /sales/{id}/void.
-  void voidSale(Sale s) {
-    save(
-      s.copyWith(
-        status: SaleStatus.voided,
-        timeline: [
-          ...s.timeline,
-          SaleEvent('Voided', 'Owner', DateTime.now(), icon: Icons.block),
-        ],
-      ),
-    );
-  }
+  // Refunds and voids are done on the real order (Orders > order > ...),
+  // so there is nothing to change here.
 }

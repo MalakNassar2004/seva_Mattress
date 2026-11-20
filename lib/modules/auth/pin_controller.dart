@@ -3,16 +3,20 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/data/repositories/company_repository.dart';
 import 'package:seva_mattress/data/repositories/product_repository.dart'
     show describeError;
+import 'package:seva_mattress/data/services/app_lock_settings.dart';
 import 'package:seva_mattress/data/services/otp_service.dart';
 import 'package:seva_mattress/data/services/session_service.dart';
 import 'package:seva_mattress/modules/auth/app_lock_controller.dart';
 import '../../app/routes/app_routes.dart';
 
 /// OTP screen logic. SMS sending/verification goes through OtpService.
-/// After the code is verified, the employee is sent to the screen that
-/// matches his role.
+/// If the owner did not turn the SMS code on (Settings > Security), the
+/// screen does not ask for it: it goes straight to loading the employee.
+/// After the code is verified (or skipped), the employee is sent to the
+/// screen that matches his role.
 class PinController extends GetxController {
   static const int pinLength = 6;
   static const int resendSeconds = 60;
@@ -34,14 +38,30 @@ class PinController extends GetxController {
     // No Face ID lock while the user is on the code screen: they may need
     // to leave the app to read the SMS.
     Get.find<AppLockController>().deactivate();
-    _startTimer();
-    _sendCode();
+    _begin();
   }
 
   @override
   void onClose() {
     _timer?.cancel();
     super.onClose();
+  }
+
+  /// Reads the security settings. Without the SMS code the employee goes on
+  /// directly; with it, the code is sent and asked.
+  Future<void> _begin() async {
+    isBusy.value = true; // no input while the settings are read
+    await CompanyRepository().load(); // never throws; applies the settings
+
+    if (!AppLockSettings.requireSms) {
+      // Stay busy so no input is accepted while the account is loaded.
+      await _onVerified();
+      return;
+    }
+
+    isBusy.value = false;
+    _startTimer();
+    await _sendCode();
   }
 
   // Resend countdown.
@@ -133,8 +153,8 @@ class PinController extends GetxController {
     }
   }
 
-  /// The code is correct: find out who the employee is and open the screen
-  /// that matches his role.
+  /// The code is correct (or not required): find out who the employee is and
+  /// open the screen that matches his role.
   Future<void> _onVerified() async {
     _timer?.cancel();
 
@@ -183,7 +203,7 @@ class PinController extends GetxController {
     switch (user.role) {
       case 'owner':
       case 'manager':
-        // The Face ID lock starts only now, after the SMS code is verified.
+        // The Face ID lock starts only now, after sign-in is complete.
         lock.activate();
         // TODO(roles): the manager gets his own limited screens later. For
         // now he opens the Owner shell and the Firestore rules limit him.

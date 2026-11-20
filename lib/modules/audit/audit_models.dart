@@ -3,6 +3,7 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_colors_extra.dart';
 
 enum AuditAction {
+  // Marwa's original actions, in her original order.
   login,
   refund,
   priceChange,
@@ -10,6 +11,11 @@ enum AuditAction {
   export,
   stockAdjustment,
   approval,
+  // Added for the real log (they appear at the end of the filter bar).
+  order,
+  payment,
+  customer,
+  product,
 }
 
 extension AuditActionInfo on AuditAction {
@@ -21,6 +27,10 @@ extension AuditActionInfo on AuditAction {
     AuditAction.export => 'Exports',
     AuditAction.stockAdjustment => 'Stock adjustments',
     AuditAction.approval => 'Approvals',
+    AuditAction.order => 'Orders',
+    AuditAction.payment => 'Payments',
+    AuditAction.customer => 'Customers',
+    AuditAction.product => 'Products',
   };
 
   IconData get icon => switch (this) {
@@ -31,6 +41,10 @@ extension AuditActionInfo on AuditAction {
     AuditAction.export => Icons.download_outlined,
     AuditAction.stockAdjustment => Icons.inventory_2_outlined,
     AuditAction.approval => Icons.verified_user_outlined,
+    AuditAction.order => Icons.receipt_long_outlined,
+    AuditAction.payment => Icons.payments_outlined,
+    AuditAction.customer => Icons.person_outline,
+    AuditAction.product => Icons.bed_outlined,
   };
 
   /// Colors of the old → new value chip: (text, background, border).
@@ -40,12 +54,15 @@ extension AuditActionInfo on AuditAction {
       AppColorsExtra.dangerSoft,
       AppColorsExtra.dangerBorder,
     ),
-    AuditAction.priceChange => (
+    AuditAction.priceChange || AuditAction.payment => (
       AppColors.success,
       AppColorsExtra.successSoft,
       AppColorsExtra.successBorder,
     ),
-    AuditAction.export => (
+    AuditAction.export ||
+    AuditAction.order ||
+    AuditAction.customer ||
+    AuditAction.product => (
       AppColors.deepBlue,
       AppColorsExtra.infoBg,
       AppColorsExtra.infoBorder,

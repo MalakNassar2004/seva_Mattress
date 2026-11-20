@@ -1,23 +1,38 @@
-import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/modules/orders/order_models.dart'
+    show orderItemFromMap;
+import 'package:url_launcher/url_launcher.dart';
 import '../../app/routes/app_routes.dart';
 import 'deliveries_controller.dart';
 import 'deliveries_mock.dart';
 import 'delivery_models.dart';
 
-/// Delivery detail. Opened with the delivery id as arguments.
+/// Delivery detail. Opened with the order id as arguments.
 /// Reads and writes through DeliveriesController so the board stays in sync.
-/// UI state only. Backend wiring is marked with TODO(backend).
 class DeliveryDetailController extends GetxController {
-  final String id = Get.arguments is String
-      ? Get.arguments as String
-      : DeliveriesMock.deliveries.first.id;
+  final String id = Get.arguments is String ? Get.arguments as String : '';
 
   DeliveriesController get _board => Get.find<DeliveriesController>();
 
-  // TODO(backend): load the delivery by id.
-  Delivery get delivery =>
-      _board.byId(id) ?? DeliveriesMock.deliveries.first;
+  /// Shown only for a moment, or when the order left the board (cancelled,
+  /// or its date is outside the strip).
+  Delivery get _empty => Delivery(
+        id: id,
+        orderNumber: '',
+        customer: '',
+        phone: '',
+        address: '',
+        itemSummary: '',
+        productName: '',
+        productTag: 'ORDER',
+        amount: 0,
+        dayIndex: DeliveriesMock.todayIndex,
+        window: '',
+        status: DeliveryStatus.pending,
+      );
+
+  Delivery get delivery => _board.byId(id) ?? _empty;
 
   DispatchDay get day => DeliveriesMock.days[delivery.dayIndex];
 
@@ -31,45 +46,49 @@ class DeliveryDetailController extends GetxController {
     if (d != null) _board.onCallDriver(d);
   }
 
-  void onCallCustomerPressed() {
-    // TODO(backend): launch the dialer with delivery.phone.
-    Get.snackbar('Calling ${delivery.customer}', delivery.phone,
-        snackPosition: SnackPosition.BOTTOM, icon: const Icon(Icons.call));
+  Future<void> onCallCustomerPressed() async {
+    final digits = delivery.phone.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) {
+      Get.snackbar('No phone', 'This customer has no phone number.',
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+    try {
+      final ok = await launchUrl(Uri(scheme: 'tel', path: digits));
+      if (!ok) throw StateError('Cannot open the dialer');
+    } catch (_) {
+      Get.snackbar('Could not call', delivery.phone,
+          snackPosition: SnackPosition.BOTTOM);
+    }
   }
 
-  void onMarkOutPressed() {
-    // TODO(backend): PATCH status = out_for_delivery.
-    _board.updateDelivery(
-        delivery.copyWith(status: DeliveryStatus.outForDelivery));
-  }
+  Future<void> onMarkOutPressed() =>
+      _board.setOrderStatus(delivery, 'outForDelivery');
 
-  void onMarkDeliveredPressed() {
-    // TODO(backend): proof comes from the driver app; this is a manual
-    // override by the owner.
-    _board.updateDelivery(delivery.copyWith(
-      status: DeliveryStatus.delivered,
-      timeLabel: 'Just now',
-    ));
-  }
+  Future<void> onMarkDeliveredPressed() =>
+      _board.setOrderStatus(delivery, 'delivered');
 
-  /// Driver could not drop off: mark the attempt failed, then pick the
-  /// reason and a new date.
-  Future<void> onMarkFailedPressed() async {
-    // TODO(backend): POST the failed attempt.
-    _board.updateDelivery(delivery.copyWith(
-      status: DeliveryStatus.failed,
-      timeLabel: 'Today',
-    ));
-    await _board.onReschedule(delivery);
-  }
+  Future<void> onMarkFailedPressed() => _board.onReportFailed(delivery);
 
   void onProofTap(int index) {
-    // TODO(backend): open the full-size proof photo / signature.
+    // Proof photos need cloud storage: not built yet.
   }
 
   // ---------------- Navigation ----------------
   void onBackPressed() => Get.back();
 
-  // TODO(backend): pass the order id so the detail page loads it.
-  void onOpenOrderPressed() => Get.toNamed(AppRoutes.orderDetail);
+  /// Opens the order of this delivery.
+  Future<void> onOpenOrderPressed() async {
+    try {
+      final snap =
+          await FirebaseFirestore.instance.collection('orders').doc(id).get();
+      final m = snap.data();
+      if (m == null) return;
+      final at = (m['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+      Get.toNamed(AppRoutes.orderDetail, arguments: orderItemFromMap(id, m, at));
+    } catch (_) {
+      Get.snackbar('Could not open the order', 'Check the connection.',
+          snackPosition: SnackPosition.BOTTOM);
+    }
+  }
 }

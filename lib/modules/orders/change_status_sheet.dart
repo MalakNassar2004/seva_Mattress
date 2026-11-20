@@ -22,6 +22,9 @@ class ChangeStatusController extends GetxController {
   final OrderStatus current;
   late final selected = current.obs;
   final notifyCustomer = true.obs;
+
+  // Not disposed on purpose: the closing animation of the sheet is still
+  // drawing this field (disposing it then crashes the screen).
   final noteController = TextEditingController();
 
   void select(OrderStatus s) => selected.value = s;
@@ -36,12 +39,6 @@ class ChangeStatusController extends GetxController {
       );
 
   void onClosePressed() => Get.back();
-
-  @override
-  void onClose() {
-    noteController.dispose();
-    super.onClose();
-  }
 }
 
 /// Bottom sheet: Change Status. Open it with ChangeStatusSheet.open().
@@ -49,16 +46,19 @@ class ChangeStatusController extends GetxController {
 class ChangeStatusSheet extends GetView<ChangeStatusController> {
   const ChangeStatusSheet({super.key});
 
-  static Future<StatusChange?> open(OrderStatus current) async {
+  static Future<StatusChange?> open(OrderStatus current) {
+    // The controller is NOT deleted when the sheet closes (the closing
+    // animation is still drawing it). The next open() replaces it.
+    if (Get.isRegistered<ChangeStatusController>()) {
+      Get.delete<ChangeStatusController>(force: true);
+    }
     Get.put(ChangeStatusController(current));
-    final result = await Get.bottomSheet<StatusChange>(
+    return Get.bottomSheet<StatusChange>(
       const ChangeStatusSheet(),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black54,
     );
-    Get.delete<ChangeStatusController>();
-    return result;
   }
 
   @override

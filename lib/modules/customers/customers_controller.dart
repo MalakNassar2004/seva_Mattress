@@ -11,14 +11,23 @@ import 'customer_models.dart';
 /// Customers list (opened from the More tab). Live from Firestore.
 class CustomersController extends GetxController {
   // ---------------- State ----------------
-  /// Index 1 is drawn as the amber "balance owing" chip.
+  /// Same chips as the design. Index 1 is drawn as the amber "balance
+  /// owing" chip.
   static const List<String> filters = [
     'All',
     'Balance Owing',
+    'VIP',
     'Recent',
+    'Sleep Trial',
   ];
   static const int balanceFilter = 1;
-  static const int recentFilter = 2;
+  static const int vipFilter = 2;
+  static const int recentFilter = 3;
+  static const int sleepTrialFilter = 4;
+
+  /// Number of customers, shown in the header of the design. It is updated
+  /// every time the list loads.
+  static int totalClients = 0;
 
   final filterIndex = 0.obs;
 
@@ -70,6 +79,7 @@ class CustomersController extends GetxController {
   /// Rebuilds the visible list from the full list.
   void _refresh() {
     totalCount.value = _all.length;
+    totalClients = _all.length;
 
     final q = _query.trim().toLowerCase();
     final digits = q.replaceAll(RegExp(r'\D'), '');
@@ -85,6 +95,11 @@ class CustomersController extends GetxController {
     final f = filterIndex.value;
     if (f == balanceFilter) {
       list = list.where((c) => (c.balanceOwing ?? 0) > 0).toList();
+    } else if (f == vipFilter) {
+      list = list.where((c) => c.isVip).toList();
+    } else if (f == sleepTrialFilter) {
+      // Sleep trials are not tracked yet.
+      list = <CustomerItem>[];
     }
 
     if (f == recentFilter) {

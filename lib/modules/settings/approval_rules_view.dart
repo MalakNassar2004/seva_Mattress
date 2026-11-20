@@ -31,20 +31,26 @@ class ApprovalRulesView extends GetView<ApprovalRulesController> {
                       child: Text.rich(
                         TextSpan(
                           children: [
+                            // TEXT: was "Rules apply instantly on every
+                            // register. Actions over a limit trigger an
+                            // owner approval prompt."
                             const TextSpan(
                               text:
-                                  'Rules apply instantly on every register. '
-                                  'Actions over a limit trigger an ',
+                                  'Saved for the whole store. Refunds over '
+                                  'the limit will need ',
                             ),
                             TextSpan(
-                              text: 'owner approval prompt',
+                              text: 'owner approval',
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.deepBlue,
                                 fontSize: 13.sp,
                               ),
                             ),
-                            const TextSpan(text: '.'),
+                            const TextSpan(
+                              text:
+                                  ' once approval requests are turned on.',
+                            ),
                           ],
                         ),
                       ),
@@ -56,8 +62,10 @@ class ApprovalRulesView extends GetView<ApprovalRulesController> {
                     SizedBox(height: 14.h),
                     Obx(_buildToggles),
                     SizedBox(height: 16.h),
+                    // TEXT: was "Rule changes are recorded under Owner PIN
+                    // #OWN-001".
                     const AuditNote(
-                      'Rule changes are recorded under Owner PIN #OWN-001',
+                      'Rule changes are recorded in the audit log',
                     ),
                   ],
                 ),
@@ -194,9 +202,10 @@ class ApprovalRulesView extends GetView<ApprovalRulesController> {
       icon: Icons.currency_exchange,
       title: 'Refund needs approval above',
       subtitle: 'Refunds over this amount need a manager or owner PIN.',
+      // TEXT: was "Approvals are requested on the register or by push
+      // notification to the owner."
       footnote:
-          'Approvals are requested on the register or by push '
-          'notification to the owner.',
+          'Approvals are requested in the app and shown in Approvals.',
       child: ValueStepper(
         current: v,
         value: formatCad(v),

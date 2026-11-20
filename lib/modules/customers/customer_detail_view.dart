@@ -4,9 +4,17 @@ import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_colors_extra.dart';
 import '../../app/theme/app_theme.dart';
+import '../../app/utils/money.dart';
 import '../../app/widgets/app_widgets.dart';
 import '../../app/widgets/owner_widgets.dart';
+import '../orders/order_models.dart';
+import '../orders/order_widgets.dart';
 import 'customer_detail_controller.dart';
+
+/// true  = the parts of the design that have no real data yet are shown as
+///         Marwa designed them (they contain sample text).
+/// false = they are hidden, so the screen shows only real information.
+const bool _showDesignSamples = false;
 
 class CustomerDetailView extends GetView<CustomerDetailController> {
   const CustomerDetailView({super.key});
@@ -24,17 +32,17 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(),
+                      Obx(_buildHeader),
                       SizedBox(height: 14.h),
-                      _buildContactCard(),
+                      Obx(_buildContactCard),
                       SizedBox(height: 12.h),
-                      _buildStats(),
+                      IntrinsicHeight(child: Obx(_buildStats)),
                       SizedBox(height: 18.h),
-                      _buildAddresses(),
+                      Obx(_buildAddresses),
                       SizedBox(height: 16.h),
                       Obx(
                         () => SegmentedTabs(
-                          labels: CustomerDetailController.tabLabels,
+                          labels: controller.tabLabels,
                           selectedIndex: controller.tabIndex.value,
                           onChanged: controller.selectTab,
                           style: SegmentedStyle.soft,
@@ -51,23 +59,25 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
                             return _buildWarrantyTab();
                         }
                       }),
-                      SizedBox(height: 14.h),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.lock_outline,
-                              size: 12.sp, color: AppColors.grey),
-                          SizedBox(width: 5.w),
-                          Text(
-                            'PCI-DSS Level 1 Encrypted · Store Terminal #04',
-                            style: TextStyle(
-                              fontSize: 10.5.sp,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.grey,
+                      if (_showDesignSamples) ...[
+                        SizedBox(height: 14.h),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.lock_outline,
+                                size: 12.sp, color: AppColors.grey),
+                            SizedBox(width: 5.w),
+                            Text(
+                              'PCI-DSS Level 1 Encrypted · Store Terminal #04',
+                              style: TextStyle(
+                                fontSize: 10.5.sp,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.grey,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -82,6 +92,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
 
   // ---------------- Header ----------------
   Widget _buildHeader() {
+    final isVip = controller.isVip;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -109,7 +120,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
             SizedBox(width: 8.w),
             Expanded(
               child: StatusPill(
-                text: 'VIP Client · Active',
+                text: isVip ? 'VIP Client · Active' : 'Active Customer',
                 dot: true,
                 fg: AppColors.success,
                 bg: AppColors.successBg,
@@ -158,7 +169,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
           children: [
             Flexible(
               child: Text(
-                CustomerDetailController.name,
+                controller.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -192,7 +203,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
           TextSpan(
             children: [
               TextSpan(
-                text: CustomerDetailController.customerId,
+                text: controller.customerCode,
                 style: TextStyle(
                   fontSize: 12.sp,
                   fontWeight: FontWeight.w800,
@@ -221,7 +232,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
           _contactRow(
             icon: Icons.phone_outlined,
             label: 'Primary Mobile',
-            value: CustomerDetailController.phone,
+            value: controller.phoneDisplay,
             actions: [
               _ActionPill(
                 icon: Icons.phone_outlined,
@@ -247,7 +258,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
           _contactRow(
             icon: Icons.mail_outline,
             label: 'Personal Email',
-            value: CustomerDetailController.email,
+            value: controller.emailDisplay,
             actions: [
               _ActionPill(
                 icon: Icons.mail_outline,
@@ -258,33 +269,35 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
               ),
             ],
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 10.h),
-            child: const Divider(),
-          ),
-          Wrap(
-            spacing: 8.w,
-            runSpacing: 8.h,
-            children: [
-              StatusPill(
-                text: 'VIP Store Account',
-                fg: AppColors.deepBlue,
-                bg: AppColors.lightBlue,
-              ),
-              StatusPill(
-                text: 'Preferred Delivery: Weekends',
-                fg: AppColors.textDark,
-                bg: AppColorsExtra.chipGrey,
-              ),
-              StatusPill(
-                text: 'Credit Approved',
-                icon: Icons.check,
-                fg: AppColors.success,
-                bg: AppColors.successBg,
-                border: AppColorsExtra.successBorder,
-              ),
-            ],
-          ),
+          if (_showDesignSamples) ...[
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 10.h),
+              child: const Divider(),
+            ),
+            Wrap(
+              spacing: 8.w,
+              runSpacing: 8.h,
+              children: [
+                StatusPill(
+                  text: 'VIP Store Account',
+                  fg: AppColors.deepBlue,
+                  bg: AppColors.lightBlue,
+                ),
+                StatusPill(
+                  text: 'Preferred Delivery: Weekends',
+                  fg: AppColors.textDark,
+                  bg: AppColorsExtra.chipGrey,
+                ),
+                StatusPill(
+                  text: 'Credit Approved',
+                  icon: Icons.check,
+                  fg: AppColors.success,
+                  bg: AppColors.successBg,
+                  border: AppColorsExtra.successBorder,
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -338,6 +351,10 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
 
   // ---------------- Stats ----------------
   Widget _buildStats() {
+    final open = controller.openOrders;
+    final hidden = controller.hideAmounts.value;
+    final owing = controller.balance > 0.004;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -348,64 +365,62 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '3',
+                  '${controller.lifetimeOrders}',
                   style: TextStyle(
                     fontSize: 24.sp,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textDark,
                   ),
                 ),
-                SizedBox(width: 4.w),
-                Padding(
-                  padding: EdgeInsets.only(bottom: 4.h),
-                  child: Text(
-                    'Active',
-                    style: TextStyle(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.success,
+                if (open > 0) ...[
+                  SizedBox(width: 4.w),
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 4.h),
+                    child: Text(
+                      '$open open',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.success,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
         ),
         SizedBox(width: 8.w),
         Expanded(
-          child: Obx(
-            () => _StatCard(
-              label: 'Total Spent',
-              labelTrailing: GestureDetector(
-                onTap: controller.toggleAmounts,
-                child: Icon(
-                  controller.hideAmounts.value
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  size: 15.sp,
-                  color: AppColors.grey,
+          child: _StatCard(
+            label: 'Total Spent',
+            labelTrailing: GestureDetector(
+              onTap: controller.toggleAmounts,
+              child: Icon(
+                hidden
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                size: 15.sp,
+                color: AppColors.grey,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hidden ? '••••••' : formatCad(controller.totalSpent),
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textDark,
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    controller.hideAmounts.value
-                        ? '••••••'
-                        : '\$5,847.00',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  SizedBox(height: 2.h),
-                  Text(
-                    'CAD',
-                    style: TextStyle(fontSize: 10.sp, color: AppColors.grey),
-                  ),
-                ],
-              ),
+                SizedBox(height: 2.h),
+                Text(
+                  'CAD',
+                  style: TextStyle(fontSize: 10.sp, color: AppColors.grey),
+                ),
+              ],
             ),
           ),
         ),
@@ -417,7 +432,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '\$0.00',
+                  formatCad(controller.balance),
                   style: TextStyle(
                     fontSize: 18.sp,
                     fontWeight: FontWeight.w800,
@@ -429,16 +444,20 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
                   padding:
                       EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                   decoration: BoxDecoration(
-                    color: AppColors.successBg,
+                    color: owing ? AppColors.warningBg : AppColors.successBg,
                     borderRadius: BorderRadius.circular(6.r),
-                    border: Border.all(color: AppColorsExtra.successBorder),
+                    border: Border.all(
+                      color: owing
+                          ? AppColorsExtra.warningBorder
+                          : AppColorsExtra.successBorder,
+                    ),
                   ),
                   child: Text(
-                    'Settled',
+                    owing ? 'Owing' : 'Settled',
                     style: TextStyle(
                       fontSize: 9.5.sp,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.success,
+                      color: owing ? AppColors.warning : AppColors.success,
                     ),
                   ),
                 ),
@@ -452,6 +471,9 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
 
   // ---------------- Addresses ----------------
   Widget _buildAddresses() {
+    final address = controller.address;
+    final city = controller.city;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -516,7 +538,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
                           ),
                           SizedBox(height: 8.h),
                           Text(
-                            '14288 72 Ave, Surrey, BC V3W 2R3',
+                            address.isEmpty ? 'No address saved yet' : address,
                             style: TextStyle(
                               fontSize: 14.sp,
                               fontWeight: FontWeight.w800,
@@ -525,7 +547,9 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
                           ),
                           SizedBox(height: 2.h),
                           Text(
-                            'Single family home · Master bedroom 2nd floor · Gate code #4820',
+                            address.isEmpty
+                                ? 'Tap + Add to save the delivery address.'
+                                : city,
                             style: TextStyle(
                               fontSize: 11.5.sp,
                               height: 1.3,
@@ -541,57 +565,62 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
             ),
           ),
         ),
-        SizedBox(height: 10.h),
-        Container(
-          padding: EdgeInsets.all(14.w),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(18.r),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    StatusPill(
-                      text: 'Secondary · Cabin',
-                      fg: AppColors.textDark,
-                      bg: AppColorsExtra.chipGrey,
-                      fontSize: 11,
-                    ),
-                    SizedBox(height: 8.h),
-                    Text(
-                      'Unit 402 - 15210 Pacific Ave, White Rock, BC',
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textDark,
+        if (_showDesignSamples) ...[
+          SizedBox(height: 10.h),
+          Container(
+            padding: EdgeInsets.all(14.w),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(18.r),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      StatusPill(
+                        text: 'Secondary · Cabin',
+                        fg: AppColors.textDark,
+                        bg: AppColorsExtra.chipGrey,
+                        fontSize: 11,
                       ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      'Freight elevator booking required with concierge.',
-                      style: TextStyle(
-                        fontSize: 11.5.sp,
-                        color: AppColors.primaryBlue.withValues(alpha: 0.8),
+                      SizedBox(height: 8.h),
+                      Text(
+                        'Unit 402 - 15210 Pacific Ave, White Rock, BC',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textDark,
+                        ),
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 2.h),
+                      Text(
+                        'Freight elevator booking required with concierge.',
+                        style: TextStyle(
+                          fontSize: 11.5.sp,
+                          color: AppColors.primaryBlue.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.chevron_right,
-                  size: 20.sp, color: AppColors.greyLight),
-            ],
+                Icon(Icons.chevron_right,
+                    size: 20.sp, color: AppColors.greyLight),
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
 
   // ---------------- Tabs ----------------
   Widget _buildWarrantyTab() {
+    if (!_showDesignSamples) {
+      return const _EmptyCard('Warranty tracking is not available yet.');
+    }
     return AppCard(
       radius: 22,
       padding: EdgeInsets.all(16.w),
@@ -683,7 +712,6 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
                 Icon(Icons.shield_outlined,
                     size: 15.sp, color: AppColors.danger),
                 SizedBox(width: 8.w),
-                // TODO(backend): real author and date of the note.
                 Text(
                   'Logged by Sara Lee (Cashier) · Jan 26, 2025',
                   style: TextStyle(fontSize: 11.sp, color: AppColors.grey),
@@ -696,52 +724,49 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
     );
   }
 
-  /// TODO(design): replace with the real Orders tab design.
+  /// The real orders of this customer. Tap one to open it.
   Widget _buildOrdersTab() {
-    const orders = [
-      ('SM-10485', 'Oct 12, 2025', '\$2,899.00 CAD', 'Delivered'),
-      ('SM-10311', 'Aug 03, 2025', '\$1,899.00 CAD', 'Delivered'),
-      ('SM-10102', 'May 21, 2025', '\$1,049.00 CAD', 'Delivered'),
-    ];
+    final list = controller.orders;
+    if (list.isEmpty) {
+      return const _EmptyCard(
+        'No orders yet. Tap "Create New Order" to add the first one.',      );
+    }
     return Column(
-      children: orders
+      children: list
           .map(
             (o) => Padding(
               padding: EdgeInsets.only(bottom: 10.h),
-              child: AppCard(
-                radius: 18,
-                padding: EdgeInsets.all(14.w),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            o.$1,
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textDark,
+              child: GestureDetector(
+                onTap: () => controller.onOrderTap(o),
+                child: AppCard(
+                  radius: 18,
+                  padding: EdgeInsets.all(14.w),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              o.number,
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textDark,
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 2.h),
-                          Text(
-                            '${o.$2} · ${o.$3}',
-                            style: TextStyle(
-                                fontSize: 11.5.sp, color: AppColors.grey),
-                          ),
-                        ],
+                            SizedBox(height: 2.h),
+                            Text(
+                              '${o.dateLabel} · ${formatCad(o.total)} CAD',
+                              style: TextStyle(
+                                  fontSize: 11.5.sp, color: AppColors.grey),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    StatusPill(
-                      text: o.$4,
-                      icon: Icons.check_circle,
-                      fg: AppColors.success,
-                      bg: AppColors.successBg,
-                      border: AppColorsExtra.successBorder,
-                    ),
-                  ],
+                      OrderStatusChip(status: o.status, long: false),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -750,43 +775,53 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
     );
   }
 
-  /// TODO(design): replace with the real Notes tab design.
+  /// The note from the customer form, then the after-sales notes.
   Widget _buildNotesTab() {
-    const notes = [
-      ('Prefers weekend deliveries only.', 'Sara Lee · Oct 12, 2025'),
-      ('Gate code changed to #4820.', 'Marcus Vance · Aug 03, 2025'),
-    ];
+    final profileNote = controller.profileNote;
+    final notes = controller.notes;
+    if (profileNote.isEmpty && notes.isEmpty) {
+      return const _EmptyCard(
+        'No notes yet. Tap "Log After-Sales Note" to add one.',
+      );
+    }
     return Column(
-      children: notes
-          .map(
-            (n) => Padding(
-              padding: EdgeInsets.only(bottom: 10.h),
-              child: AppCard(
-                radius: 18,
-                padding: EdgeInsets.all(14.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      n.$1,
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        height: 1.35,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    SizedBox(height: 4.h),
-                    Text(
-                      n.$2,
-                      style: TextStyle(fontSize: 11.sp, color: AppColors.grey),
-                    ),
-                  ],
-                ),
+      children: [
+        if (profileNote.isNotEmpty) _noteCard(profileNote, 'Customer profile'),
+        for (final n in notes)
+          _noteCard(
+            n.text,
+            '${n.by.isEmpty ? 'Unknown' : n.by} · ${fmtOrderDate(n.at)}',
+          ),
+      ],
+    );
+  }
+
+  Widget _noteCard(String text, String meta) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: AppCard(
+        radius: 18,
+        padding: EdgeInsets.all(14.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 13.sp,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textDark,
               ),
             ),
-          )
-          .toList(),
+            SizedBox(height: 4.h),
+            Text(
+              meta,
+              style: TextStyle(fontSize: 11.sp, color: AppColors.grey),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -828,7 +863,7 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
                       SizedBox(width: 12.w),
                       Expanded(
                         child: Text(
-                          'Create New Order / Quote',
+                          'Create New Order ',
                           style: TextStyle(
                             fontSize: 15.sp,
                             fontWeight: FontWeight.w800,
@@ -869,6 +904,29 @@ class CustomerDetailView extends GetView<CustomerDetailController> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Message card for an empty tab.
+class _EmptyCard extends StatelessWidget {
+  const _EmptyCard(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      radius: 18,
+      padding: EdgeInsets.all(14.w),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12.5.sp,
+          height: 1.35,
+          color: AppColors.grey,
+        ),
       ),
     );
   }

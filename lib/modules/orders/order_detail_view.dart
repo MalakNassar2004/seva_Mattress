@@ -15,8 +15,7 @@ import 'order_models.dart';
 class OrderDetailView extends GetView<OrderDetailController> {
   const OrderDetailView({super.key});
 
-  static const OrderDetail _d = OrderDetailController.detail;
-
+  OrderDetail get _d => controller.detail.value;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,7 +25,7 @@ class OrderDetailView extends GetView<OrderDetailController> {
             children: [
               Padding(
                 padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 0),
-                child: _buildHeader(),
+                                child: Obx(_buildHeader),
               ),
               SizedBox(height: 14.h),
               Obx(_buildStepper),
@@ -36,11 +35,15 @@ class OrderDetailView extends GetView<OrderDetailController> {
                 child: ListView(
                   padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 16.h),
                   children: [
-                    if (_d.spec != null) ...[
-                      _buildSpecCard(_d.spec!),
-                      SizedBox(height: 14.h),
-                    ],
-                    _buildItemsCard(),
+                                        Obx(
+                      () => _d.spec == null
+                          ? const SizedBox.shrink()
+                          : Padding(
+                              padding: EdgeInsets.only(bottom: 14.h),
+                              child: _buildSpecCard(_d.spec!),
+                            ),
+                    ),
+                    Obx(_buildItemsCard),
                     SizedBox(height: 14.h),
                     Obx(_buildPaymentsCard),
                     SizedBox(height: 14.h),
@@ -500,12 +503,16 @@ class OrderDetailView extends GetView<OrderDetailController> {
           const Divider(color: AppColorsExtra.panelBorder),
           SizedBox(height: 10.h),
           _priceRow('Subtotal', '${formatCad(controller.subtotal)} CAD'),
+          if (controller.discountCents.value > 0) ...[
+            SizedBox(height: 10.h),
+            _priceRow(
+              controller.discountLabel,
+              '-${formatCad(controller.discount)} CAD',
+            ),
+          ],          SizedBox(height: 10.h),
+                    _priceRow(controller.gstLabel, '${formatCad(controller.gst)} CAD'),
           SizedBox(height: 10.h),
-          _priceRow(
-            'PST / GST (${(_d.taxRate * 100).round()}% BC)',
-            '${formatCad(controller.tax)} CAD',
-            info: true,
-          ),
+          _priceRow(controller.pstLabel, '${formatCad(controller.pst)} CAD'),
           SizedBox(height: 10.h),
           const Divider(color: AppColorsExtra.panelBorder),
           SizedBox(height: 10.h),
@@ -711,7 +718,7 @@ class OrderDetailView extends GetView<OrderDetailController> {
                           Text(
                             full
                                 ? 'Nothing left to collect'
-                                : 'Due prior to final dispatch',
+                                                                : controller.nextPaymentLabel,
                             style: TextStyle(
                                 fontSize: 11.5.sp, color: AppColors.grey),
                           ),

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/data/services/app_lock_settings.dart';
+import 'package:seva_mattress/data/services/notification_types.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_colors_extra.dart';
-import '../../app/utils/dates.dart';
 import '../../app/widgets/app_widgets.dart';
 import '../../app/widgets/owner_bottom_nav.dart';
 import '../../app/widgets/owner_widgets.dart';
@@ -11,7 +12,10 @@ import '../../app/widgets/page_widgets.dart';
 import '../../app/widgets/shared_widgets.dart';
 import '../owner_shell/owner_shell_controller.dart';
 import 'settings_controller.dart';
-import 'settings_store.dart';
+
+/// 500 -> "5%", 725 -> "7.25%".
+String _pct(int bp) =>
+    bp % 100 == 0 ? '${bp ~/ 100}%' : '${(bp / 100).toStringAsFixed(2)}%';
 
 /// Settings main screen (owner). Opened from the More tab.
 class SettingsView extends GetView<SettingsController> {
@@ -31,7 +35,7 @@ class SettingsView extends GetView<SettingsController> {
                   children: [
                     _buildHeader(),
                     SizedBox(height: 14.h),
-                    Obx(_buildBackupCard),
+                    _buildBackupCard(),
                     SizedBox(height: 20.h),
                     const SectionHeading('Store'),
                     Obx(_buildStoreGroup),
@@ -40,8 +44,8 @@ class SettingsView extends GetView<SettingsController> {
                     Obx(_buildPolicyGroup),
                     SizedBox(height: 16.h),
                     const AuditNote(
-                      'All configuration changes are logged under Owner PIN '
-                      '#OWN-001',
+                      'All configuration changes are recorded in the audit '
+                      'log',
                     ),
                   ],
                 ),
@@ -68,20 +72,12 @@ class SettingsView extends GetView<SettingsController> {
             BackPill(label: 'More', onTap: controller.onBackPressed),
             SizedBox(width: 8.w),
             const Spacer(),
-            const StatusPill(
-              text: 'PCI-DSS L1',
-              icon: Icons.lock,
-              fg: AppColors.deepBlue,
-              bg: AppColors.white,
-              border: AppColors.border,
-              fontSize: 11,
-            ),
           ],
         ),
         SizedBox(height: 14.h),
         const PageTitle(
           title: 'Settings',
-          subtitle: 'Store Operations & Terminal Governance · Surrey, BC',
+          subtitle: 'Store settings, security and notifications',
         ),
       ],
     );
@@ -89,15 +85,6 @@ class SettingsView extends GetView<SettingsController> {
 
   // ---------------- Backups ----------------
   Widget _buildBackupCard() {
-    final s = controller.store;
-    final busy = s.backingUp.value;
-    final ok = s.lastBackupOk.value;
-    final mins = DateTime.now().difference(s.lastBackup.value).inMinutes;
-    final when = mins < 1
-        ? 'just now'
-        : mins < 60
-        ? '${mins}m ago'
-        : formatWhen(s.lastBackup.value);
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,9 +107,11 @@ class SettingsView extends GetView<SettingsController> {
                     ),
                     SizedBox(height: 2.h),
                     Text(
-                      'Automatic cloud ledger backup every hour',
+                      'Your data is stored in the cloud (Firestore). '
+                      'Automatic backups need the paid Firebase plan.',
                       style: TextStyle(
                         fontSize: 12.sp,
+                        height: 1.35,
                         color: AppColors.textDark.withValues(alpha: 0.7),
                       ),
                     ),
@@ -136,28 +125,21 @@ class SettingsView extends GetView<SettingsController> {
           SizedBox(height: 12.h),
           Row(
             children: [
-              Expanded(
+              const Expanded(
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: StatusPill(
-                    text: ok
-                        ? 'Last backup: success · $when'
-                        : 'Last backup failed · $when',
-                    icon: ok ? Icons.check_circle : Icons.error_outline,
-                    fg: ok ? AppColors.success : AppColors.danger,
-                    bg: ok
-                        ? AppColorsExtra.successSoft
-                        : AppColorsExtra.dangerSoft,
-                    border: ok
-                        ? AppColorsExtra.successBorder
-                        : AppColorsExtra.dangerBorder,
+                    text: 'Automatic backup: not active yet',
+                    icon: Icons.info_outline,
+                    fg: AppColors.grey,
+                    bg: AppColorsExtra.chipGrey,
                     fontSize: 11,
                   ),
                 ),
               ),
               SizedBox(width: 8.w),
               SoftButton(
-                label: busy ? 'Backing up…' : 'Run backup now',
+                label: 'Run backup now',
                 icon: Icons.sync,
                 height: 38,
                 radius: 12,
@@ -174,61 +156,48 @@ class SettingsView extends GetView<SettingsController> {
 
   // ---------------- Groups ----------------
   Widget _buildStoreGroup() {
-    final online = controller.store.terminalOnline.value;
+    final c = controller.company.value;
+    final profileLine = [c.name, c.address, c.phone]
+        .where((s) => s.trim().isNotEmpty)
+        .join(' · ');
     return MenuGroup(
       tiles: [
         MenuTile(
           icon: Icons.storefront_outlined,
           title: 'Store profile',
-          subtitle:
-              '${SettingsStore.storeName} · ${SettingsStore.storeAddress}'
-              ' · ${SettingsStore.storePhone}',
-          badge: const StatusPill(
-            text: 'Logo set',
-            fg: AppColors.grey,
-            bg: AppColorsExtra.chipGrey,
-            fontSize: 10,
-          ),
-          onTap: () => controller.onNotDesigned('Store profile'),
+          subtitle: profileLine,
+          onTap: controller.onStoreProfilePressed,
         ),
         MenuTile(
           icon: Icons.percent,
           title: 'Taxes',
-          subtitle:
-              'GST ${SettingsStore.gst.toStringAsFixed(0)}% + '
-              'PST ${SettingsStore.pst.toStringAsFixed(0)}% (BC)',
+          subtitle: 'GST ${_pct(c.gstBp)} + PST ${_pct(c.pstBp)}',
           badge: StatusPill(
-            text:
-                '${(SettingsStore.gst + SettingsStore.pst).toStringAsFixed(0)}'
-                '% total',
+            text: '${_pct(c.gstBp + c.pstBp)} total',
             fg: AppColorsExtra.amberText,
             bg: AppColorsExtra.amberSoft,
             border: AppColorsExtra.amberBorder,
             fontSize: 10,
           ),
-          onTap: () => controller.onNotDesigned('Tax'),
+          onTap: controller.onTaxesPressed,
         ),
         MenuTile(
           icon: Icons.credit_card,
           title: 'Payment methods',
-          subtitle: 'Cash · Card terminal · Other (gift card, e-transfer)',
+          subtitle: c.paymentMethods.join(' · '),
           badge: StatusPill(
-            text: online ? 'Terminal online' : 'Terminal offline',
-            dot: true,
-            fg: online ? AppColors.success : AppColors.danger,
-            bg: online ? AppColorsExtra.successSoft : AppColorsExtra.dangerSoft,
-            border: online
-                ? AppColorsExtra.successBorder
-                : AppColorsExtra.dangerBorder,
+            text: '${c.paymentMethods.length} enabled',
+            fg: AppColors.deepBlue,
+            bg: AppColors.lightBlue,
             fontSize: 10,
           ),
-          onTap: () => controller.onNotDesigned('Payment'),
+          onTap: controller.onPaymentMethodsPressed,
         ),
         MenuTile(
           icon: Icons.receipt_outlined,
           title: 'Receipts',
-          subtitle: 'Thermal 80mm print, email & SMS receipts, footer text',
-          onTap: () => controller.onNotDesigned('Receipt'),
+          subtitle: 'Invoice PDF · email · thank-you and terms text',
+          onTap: controller.onReceiptsPressed,
         ),
       ],
     );
@@ -236,6 +205,12 @@ class SettingsView extends GetView<SettingsController> {
 
   Widget _buildPolicyGroup() {
     final rules = controller.store.approvalRules.value;
+    final c = controller.company.value;
+    final lock = c.lockMinutes == 0
+        ? 'asks every time the app comes back'
+        : 'asks after ${AppLockSettings.label(c.lockMinutes)} away';
+    final onCount = controller.notificationsOn.length;
+    final total = NotificationTypes.all.length;
     return MenuGroup(
       tiles: [
         MenuTile(
@@ -255,18 +230,20 @@ class SettingsView extends GetView<SettingsController> {
         MenuTile(
           icon: Icons.lock_outline,
           title: 'Security',
-          subtitle:
-              'Session timeout ${SettingsStore.autoLockMinutes} min · '
-              'PIN required · Biometrics on',
-          onTap: () => controller.onNotDesigned('Security'),
+          subtitle: 'Face ID lock · $lock',
+          onTap: controller.onSecurityPressed,
         ),
         MenuTile(
           icon: Icons.notifications_none,
           title: 'Notifications',
-          subtitle:
-              'Low-stock alert when stock ≤ '
-              '${SettingsStore.lowStockThreshold} units',
-          onTap: () => controller.onNotDesigned('Notification'),
+          subtitle: 'Payment & delivery reminders, order alerts',
+          badge: StatusPill(
+            text: '$onCount of $total on',
+            fg: AppColors.deepBlue,
+            bg: AppColors.lightBlue,
+            fontSize: 10,
+          ),
+          onTap: controller.onNotificationsPressed,
         ),
       ],
     );

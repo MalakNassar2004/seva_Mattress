@@ -5,12 +5,13 @@ import '../../app/theme/app_colors_extra.dart';
 const double gstRate = 0.05;
 const double pstRate = 0.07;
 
-enum SaleStatus { paid, deposit, refunded, voided }
+enum SaleStatus { paid, deposit, unpaid, refunded, voided }
 
 extension SaleStatusInfo on SaleStatus {
   String get label => switch (this) {
     SaleStatus.paid => 'Paid',
     SaleStatus.deposit => 'Deposit',
+    SaleStatus.unpaid => 'Unpaid',
     SaleStatus.refunded => 'Refunded',
     SaleStatus.voided => 'Voided',
   };
@@ -22,7 +23,7 @@ extension SaleStatusInfo on SaleStatus {
       AppColorsExtra.successSoft,
       AppColorsExtra.successBorder,
     ),
-    SaleStatus.deposit => (
+    SaleStatus.deposit || SaleStatus.unpaid => (
       AppColorsExtra.amberText,
       AppColorsExtra.amberSoft,
       AppColorsExtra.amberBorder,
@@ -119,7 +120,7 @@ class SalePayment {
 
   final PayMethod method;
 
-  /// "Visa •••• 4892", "Interac Debit", "Cash".
+  /// "Card", "Cash", "E-Transfer".
   final String label;
   final String reference;
   final double amount;
@@ -151,9 +152,12 @@ class Sale {
     this.note,
     this.refunded = 0,
     this.refundState = RefundState.none,
+    this.orderId = '',
+    this.gstAmount,
+    this.pstAmount,
   });
 
-  /// "SM-10482" (shown as "#SM-10482").
+  /// "ORD-10482" (shown as "#ORD-10482").
   final String invoice;
   final String customer;
   final String cashier;
@@ -164,18 +168,26 @@ class Sale {
   final List<SaleEvent> timeline;
   final double discount;
 
-  /// Short context line ("Walk-in VIP", "Scheduled delivery Oct 24").
+  /// Short context line ("Custom build").
   final String? note;
 
   /// Amount refunded so far (CAD, incl. tax).
   final double refunded;
   final RefundState refundState;
 
+  /// The Firestore id of the order this sale comes from.
+  final String orderId;
+
+  /// The taxes as they are saved on the order (to the cent). When they are
+  /// not given, they are worked out from the standard rates.
+  final double? gstAmount;
+  final double? pstAmount;
+
   int get itemCount => lines.fold(0, (s, l) => s + l.qty);
   double get subtotal => lines.fold(0, (s, l) => s + l.total);
   double get taxable => subtotal - discount;
-  double get gst => taxable * gstRate;
-  double get pst => taxable * pstRate;
+  double get gst => gstAmount ?? taxable * gstRate;
+  double get pst => pstAmount ?? taxable * pstRate;
   double get taxes => gst + pst;
   double get total => taxable + taxes;
   double get paid => payments.fold(0, (s, p) => s + p.amount);
@@ -193,6 +205,7 @@ class Sale {
 
   static String _initials(String name) {
     final p = name.trim().split(RegExp(r'\s+'));
+    if (p.isEmpty || p.first.isEmpty) return '?';
     return (p.first[0] + (p.length > 1 ? p.last[0] : '')).toUpperCase();
   }
 
@@ -214,5 +227,8 @@ class Sale {
     note: note,
     refunded: refunded ?? this.refunded,
     refundState: refundState ?? this.refundState,
+    orderId: orderId,
+    gstAmount: gstAmount,
+    pstAmount: pstAmount,
   );
 }

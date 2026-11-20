@@ -14,6 +14,12 @@ import 'deliveries_controller.dart';
 import 'delivery_models.dart';
 import 'reschedule_sheet.dart';
 
+/// false = the route map drawing, the "Fleet Live" badge and the
+///         List | Route tabs are hidden. The map is a drawing, not a real
+///         map yet, so the board shows only the list of deliveries.
+/// true  = they are shown as Marwa designed them.
+const bool _showMap = false;
+
 /// Deliveries dispatch board (owner): date strip, status summary, and the
 /// List | Route views. Shows the owner bottom navigation with Orders selected.
 class DeliveriesView extends GetView<DeliveriesController> {
@@ -38,14 +44,18 @@ class DeliveriesView extends GetView<DeliveriesController> {
                       SizedBox(height: 12.h),
                       _buildSummaryChips(),
                       SizedBox(height: 12.h),
-                      _pad(SegmentedTabs(
-                        labels: const ['List', 'Route / Map'],
-                        selectedIndex: controller.viewMode.value,
-                        onChanged: controller.setViewMode,
-                      )),
-                      SizedBox(height: 14.h),
-                      if (controller.viewMode.value ==
-                          DeliveriesController.listMode)
+                      if (_showMap) ...[
+                        _pad(SegmentedTabs(
+                          labels: const ['List', 'Route / Map'],
+                          selectedIndex: controller.viewMode.value,
+                          onChanged: controller.setViewMode,
+                        )),
+                        SizedBox(height: 14.h),
+                      ] else
+                        SizedBox(height: 2.h),
+                      if (!_showMap ||
+                          controller.viewMode.value ==
+                              DeliveriesController.listMode)
                         ..._buildList()
                       else
                         _pad(_RouteView(controller: controller)),
@@ -117,17 +127,18 @@ class DeliveriesView extends GetView<DeliveriesController> {
                 ),
               ),
             ),
-            GestureDetector(
-              onTap: controller.onFleetLivePressed,
-              child: const StatusPill(
-                text: 'Fleet Live',
-                dot: true,
-                fg: AppColors.success,
-                bg: AppColorsExtra.successSoft,
-                border: AppColorsExtra.successBorder,
-                fontSize: 12,
+            if (_showMap)
+              GestureDetector(
+                onTap: controller.onFleetLivePressed,
+                child: const StatusPill(
+                  text: 'Fleet Live',
+                  dot: true,
+                  fg: AppColors.success,
+                  bg: AppColorsExtra.successSoft,
+                  border: AppColorsExtra.successBorder,
+                  fontSize: 12,
+                ),
               ),
-            ),
           ],
         ),
         SizedBox(height: 4.h),
@@ -517,6 +528,10 @@ class DeliveryCard extends StatelessWidget {
         );
 
       case DeliveryStatus.delivered:
+        // No driver recorded yet and no proof: nothing to show on this row.
+        if (d.driver == null && !d.proofVerified) {
+          return const SizedBox.shrink();
+        }
         return Row(
           children: [
             Icon(Icons.local_shipping_outlined,
@@ -684,6 +699,7 @@ class DeliveryCard extends StatelessWidget {
 // ---------------- Route view ----------------
 /// Schematic route of today's stops.
 // TODO(backend): replace the drawing with a real map SDK and live GPS.
+// Hidden while [_showMap] is false.
 class _RouteView extends StatelessWidget {
   const _RouteView({required this.controller});
 

@@ -1,9 +1,14 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:seva_mattress/data/repositories/audit_repository.dart';
+import 'package:seva_mattress/data/repositories/customer_repository.dart'
+    show describeCustomerError;
 import '../../app/utils/dates.dart';
 import '../owner_shell/owner_nav.dart';
 import 'audit_event_sheet.dart';
 import 'audit_models.dart';
-import 'audit_store.dart';
 
 enum AuditDateFilter { today, todayYesterday, last7Days, all }
 
@@ -24,12 +29,17 @@ extension AuditDateFilterLabel on AuditDateFilter {
   };
 }
 
-/// Read-only Audit Log (owner). Opened from the More tab.
-/// UI state only. Backend wiring is marked with TODO(backend).
+/// Read-only Audit Log (owner). Opened from the More tab. Live from
+/// Firestore: every other screen writes its changes into the log.
 class AuditController extends GetxController {
-  final store = AuditStore.to;
+  final _repo = AuditRepository();
 
   // ---------------- State ----------------
+  /// All the events (newest first), live from Firestore.
+  final events = <AuditEvent>[].obs;
+  final isLoading = true.obs;
+  final loadError = RxnString();
+
   final query = ''.obs;
 
   /// null = all action types.
@@ -39,10 +49,45 @@ class AuditController extends GetxController {
   final user = RxnString();
   final dateFilter = AuditDateFilter.last7Days.obs;
 
+  StreamSubscription<List<AuditEvent>>? _sub;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _listen();
+  }
+
+  @override
+  void onClose() {
+    _sub?.cancel();
+    super.onClose();
+  }
+
+  void _listen() {
+    isLoading.value = true;
+    _sub = _repo.watchEvents().listen(
+      (list) {
+        events.assignAll(list);
+        isLoading.value = false;
+        loadError.value = null;
+      },
+      onError: (Object e) {
+        isLoading.value = false;
+        loadError.value = describeCustomerError(e);
+        Get.snackbar(
+          'Could not load the audit log',
+          'Only the owner can read it. ${describeCustomerError(e)}',
+          snackPosition: SnackPosition.TOP,
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        );
+      },
+    );
+  }
+
   // ---------------- Derived ----------------
   /// Distinct people in the log, owner first.
   List<String> get users {
-    final names = store.events.map((e) => e.actor).toSet().toList()..sort();
+    final names = events.map((e) => e.actor).toSet().toList()..sort();
     if (names.remove('Owner')) names.insert(0, 'Owner');
     return names;
   }
@@ -57,7 +102,7 @@ class AuditController extends GetxController {
   /// Events matching every filter except the action type (for chip counts).
   List<AuditEvent> get _base {
     final q = query.value.trim().toLowerCase();
-    return store.events.where((e) {
+    return events.where((e) {
       if (user.value != null && e.actor != user.value) return false;
       if (!_inDate(e)) return false;
       if (q.isEmpty) return true;

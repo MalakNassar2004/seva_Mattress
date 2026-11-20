@@ -65,7 +65,7 @@ class ExportsView extends GetView<ExportsController> {
             SizedBox(width: 8.w),
             const Spacer(),
             const StatusPill(
-              text: 'PCI-DSS L1',
+                            text: 'Owner only',
               icon: Icons.lock,
               fg: AppColors.deepBlue,
               bg: AppColors.white,

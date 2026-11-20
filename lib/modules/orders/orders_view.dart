@@ -15,6 +15,9 @@ import 'orders_controller.dart';
 /// Orders & Quotes (owner). Lives in the Orders tab of the owner shell, so it
 /// does not draw the bottom navigation. Its controller is registered by
 /// OwnerShellBinding.
+/// /// false = Quotes are hidden (they are not built yet). Set to true to show
+/// the Orders | Quotes switch again.
+const bool _quotesEnabled = false;
 class OrdersView extends GetView<OrdersController> {
   const OrdersView({super.key});
 
@@ -31,8 +34,10 @@ class OrdersView extends GetView<OrdersController> {
                   children: [
                     _buildHeader(),
                     SizedBox(height: 14.h),
-                    Obx(_buildSegment),
-                    SizedBox(height: 12.h),
+                                        if (_quotesEnabled) ...[
+                      Obx(_buildSegment),
+                      SizedBox(height: 12.h),
+                    ],
                   ],
                 ),
               ),
@@ -61,7 +66,7 @@ class OrdersView extends GetView<OrdersController> {
               Padding(
                 padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
                 child: PrimaryArrowButton(
-                  label: 'Create Order / Quote',
+                  label: 'Create Order',
                   leadingIcon: Icons.add_circle,
                   onPressed: controller.onCreatePressed,
                 ),
@@ -86,8 +91,7 @@ class OrdersView extends GetView<OrdersController> {
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Orders & Quotes',
-                  style: TextStyle(
+'Orders',                  style: TextStyle(
                     fontSize: 24.sp,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textDark,
@@ -141,7 +145,7 @@ class OrdersView extends GetView<OrdersController> {
   Widget _buildSegment() {
     final selected = controller.segment.value;
     final tabs = [
-      ('Orders', OrdersController.totalOrders),
+      ('Orders', controller.totalOrders.value),
       ('Quotes', controller.totalQuotes.value),
     ];
     return Container(
@@ -224,14 +228,14 @@ class OrdersView extends GetView<OrdersController> {
         if (s == null) {
           return ChoicePill(
             label: 'All',
-            count: '(${OrdersController.totalOrders})',
+count: '(${controller.totalOrders.value})',
             selected: sel == i,
             onTap: () => controller.selectStatusFilter(i),
           );
         }
         return ChoicePill(
           label: s.label,
-          count: '${OrdersController.statusCounts[s] ?? 0}',
+count: '${controller.statusCounts[s] ?? 0}',
           dotColor: s.icon == null ? s.fg : null,
           icon: s.icon,
           selected: sel == i,

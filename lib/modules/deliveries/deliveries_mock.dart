@@ -1,21 +1,58 @@
 import 'delivery_models.dart';
 
 /// Mock data for Deliveries.
-/// TODO(backend): delete when the API is wired.
+/// The date strip is real. The drivers below are still demo data.
+/// TODO(backend): delete when the drivers are wired.
 class DeliveriesMock {
   DeliveriesMock._();
 
-  static const List<DispatchDay> days = [
-    DispatchDay('Wed', 23, 'Oct'),
-    DispatchDay('Thu', 24, 'Oct'),
-    DispatchDay('Fri', 25, 'Oct', isToday: true),
-    DispatchDay('Sat', 26, 'Oct'),
-    DispatchDay('Sun', 27, 'Oct'),
-    DispatchDay('Mon', 28, 'Oct'),
-    DispatchDay('Tue', 29, 'Oct'),
+  // The date strip: 2 days back, today, and 27 days ahead.
+  static const int todayIndex = 2;
+  static const int dayCount = 30;
+
+  static final DateTime firstDay = () {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day - todayIndex);
+  }();
+
+  /// The date of the day at [i] on the strip (local midnight).
+  static DateTime dateOf(int i) =>
+      DateTime(firstDay.year, firstDay.month, firstDay.day + i);
+
+  static const List<String> _weekdays = [
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
   ];
 
-  static const int todayIndex = 2;
+  static const List<String> _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  static final List<DispatchDay> days = List.generate(dayCount, (i) {
+    final d = dateOf(i);
+    return DispatchDay(
+      _weekdays[d.weekday - 1],
+      d.day,
+      _months[d.month - 1],
+      isToday: i == todayIndex,
+    );
+  });
 
   /// Counts on the summary chips for today (whole fleet, not just the
   /// cards loaded below).

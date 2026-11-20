@@ -7,18 +7,25 @@ import '../../app/utils/money.dart';
 import '../../app/widgets/app_widgets.dart';
 import '../../app/widgets/shared_widgets.dart';
 import 'order_models.dart';
+import 'package:seva_mattress/data/services/payment_methods.dart';
 
 class RecordPaymentController extends GetxController {
   RecordPaymentController(this.balance);
 
   final double balance;
 
-  static const List<(String, IconData)> methods = [
+   static const List<(String, IconData)> _all = [
     ('Card', Icons.credit_card),
     ('Cash', Icons.payments_outlined),
     ('E-Transfer', Icons.swap_horiz),
     ('Financing', Icons.account_balance_outlined),
   ];
+
+  /// Only the methods the owner turned on in Settings > Payment methods.
+  static List<(String, IconData)> get methods => [
+        for (final m in _all)
+          if (PaymentMethodsConfig.enabled.contains(m.$1)) m,
+      ];
 
   /// Quick amount presets. 0 = full balance, 1 = half, 2 = custom.
   static const List<String> presets = ['Full balance', '50%', 'Custom'];
@@ -27,6 +34,12 @@ class RecordPaymentController extends GetxController {
   final presetIndex = 0.obs;
   final amount = 0.0.obs;
   final error = RxnString();
+
+  /// When the next payment is due. Needed only while a balance is left.
+  final nextDate = Rxn<DateTime>();
+
+  // Not disposed on purpose: the closing animation of the sheet is still
+  // drawing these fields (disposing them then crashes the screen).
   late final amountController =
       TextEditingController(text: balance.toStringAsFixed(2));
   final referenceController = TextEditingController();
@@ -57,6 +70,29 @@ class RecordPaymentController extends GetxController {
     return 'Partial payment';
   }
 
+  /// True while a balance is left after this payment.
+  bool get partial => amount.value > 0 && amount.value < balance - 0.004;
+
+  DateTime get _today {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day);
+  }
+
+  Future<void> pickNextDate() async {
+    final today = _today;
+    var initial = nextDate.value ?? today.add(const Duration(days: 14));
+    if (initial.isBefore(today)) initial = today;
+    final picked = await showDatePicker(
+      context: Get.context!,
+      initialDate: initial,
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 730)),
+    );
+    if (picked == null) return;
+    nextDate.value = DateTime(picked.year, picked.month, picked.day);
+    error.value = null;
+  }
+
   void onConfirm() {
     final v = amount.value;
     if (v <= 0) {
@@ -67,9 +103,19 @@ class RecordPaymentController extends GetxController {
       error.value = 'Amount is more than the balance owing';
       return;
     }
+    if (partial) {
+      final d = nextDate.value;
+      if (d == null) {
+        error.value = 'Choose the date of the next payment';
+        return;
+      }
+      if (d.isBefore(_today)) {
+        error.value = 'The next payment date cannot be in the past';
+        return;
+      }
+    }
     final m = methods[methodIndex.value];
     final ref = referenceController.text.trim();
-    // TODO(backend): charge the card terminal / save the payment.
     Get.back(
       result: PaymentRecord(
         method: ref.isEmpty ? m.$1 : '${m.$1} · $ref',
@@ -78,34 +124,31 @@ class RecordPaymentController extends GetxController {
         amount: v,
         icon: m.$2,
         statusLabel: m.$1 == 'Card' ? 'Authorized' : 'Recorded',
+        nextDate: partial ? nextDate.value : null,
       ),
     );
   }
 
   void onClosePressed() => Get.back();
-
-  @override
-  void onClose() {
-    amountController.dispose();
-    referenceController.dispose();
-    super.onClose();
-  }
 }
 
 /// Bottom sheet: Record Payment. Open it with RecordPaymentSheet.open().
 class RecordPaymentSheet extends GetView<RecordPaymentController> {
   const RecordPaymentSheet({super.key});
 
-  static Future<PaymentRecord?> open({required double balance}) async {
+  static Future<PaymentRecord?> open({required double balance}) {
+    // The controller is NOT deleted when the sheet closes (the closing
+    // animation is still drawing it). The next open() replaces it.
+    if (Get.isRegistered<RecordPaymentController>()) {
+      Get.delete<RecordPaymentController>(force: true);
+    }
     Get.put(RecordPaymentController(balance));
-    final result = await Get.bottomSheet<PaymentRecord>(
+    return Get.bottomSheet<PaymentRecord>(
       const RecordPaymentSheet(),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black54,
     );
-    Get.delete<RecordPaymentController>();
-    return result;
   }
 
   @override
@@ -197,6 +240,56 @@ class RecordPaymentSheet extends GetView<RecordPaymentController> {
                   fontWeight: FontWeight.w600,
                   color: err == null ? AppColors.grey : AppColors.danger,
                 ),
+              ),
+            );
+          }),
+          // A balance is left: when is the next payment due?
+          Obx(() {
+            if (!controller.partial) return const SizedBox.shrink();
+            final d = controller.nextDate.value;
+            return Padding(
+              padding: EdgeInsets.only(top: 14.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _label('Next payment date'),
+                  GestureDetector(
+                    onTap: controller.pickNextDate,
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 12.w, vertical: 13.h),
+                      decoration: BoxDecoration(
+                        color: AppColorsExtra.panelGrey,
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(color: AppColorsExtra.panelBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_today_outlined,
+                              size: 17.sp, color: AppColors.primaryBlue),
+                          SizedBox(width: 10.w),
+                          Expanded(
+                            child: Text(
+                              d == null
+                                  ? 'Choose when the next payment is due'
+                                  : fmtOrderDate(d),
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: d == null
+                                    ? FontWeight.w400
+                                    : FontWeight.w700,
+                                color: d == null
+                                    ? AppColors.grey
+                                    : AppColors.textDark,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             );
           }),

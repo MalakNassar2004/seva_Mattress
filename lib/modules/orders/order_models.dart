@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_colors_extra.dart';
@@ -77,9 +78,9 @@ extension OrderStatusStyle on OrderStatus {
 }
 
 /// One card of the Orders list.
-/// TODO(backend): replace with the real order model.
 class OrderItem {
   const OrderItem({
+    this.id = '',
     required this.number,
     required this.product,
     required this.customer,
@@ -97,6 +98,8 @@ class OrderItem {
     this.footerRightAccent = false,
   });
 
+  /// Firestore document id ('' for design mock data).
+  final String id;
   final String number;
   final String product;
   final String customer;
@@ -121,6 +124,7 @@ class OrderItem {
   bool get paidInFull => balance <= 0.004;
 
   OrderItem copyWith({OrderStatus? status, double? paid}) => OrderItem(
+        id: id,
         number: number,
         product: product,
         customer: customer,
@@ -214,6 +218,8 @@ class OrderLine {
     required this.price,
     required this.icon,
     this.qty = 1,
+    this.productId = '',
+    this.sku = '',
   });
 
   final String name;
@@ -221,6 +227,8 @@ class OrderLine {
   final double price;
   final IconData icon;
   final int qty;
+  final String productId;
+  final String sku;
 
   OrderLine copyWith({int? qty}) => OrderLine(
         name: name,
@@ -228,19 +236,24 @@ class OrderLine {
         price: price,
         icon: icon,
         qty: qty ?? this.qty,
+        productId: productId,
+        sku: sku,
       );
 }
 
 class PaymentRecord {
   const PaymentRecord({
+    this.id = '',
     required this.method,
     required this.dateLabel,
     required this.kind,
     required this.amount,
     required this.icon,
     this.statusLabel = 'Authorized',
+    this.nextDate,
   });
 
+  final String id;
   final String method;
   final String dateLabel;
 
@@ -249,6 +262,10 @@ class PaymentRecord {
   final double amount;
   final IconData icon;
   final String statusLabel;
+
+  /// Chosen in the Record Payment sheet: when the next payment is due
+  /// (null when this payment settles the order).
+  final DateTime? nextDate;
 }
 
 class TimelineEvent {
@@ -297,4 +314,151 @@ class OrderDetail {
   final String deliveryWindow;
   final String deliveryTeam;
   final List<TimelineEvent> timeline;
+}
+
+// =====================================================================
+// Firestore documents -> display models
+// =====================================================================
+
+const List<String> _months = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/// Nov 17, 2026
+String fmtOrderDate(DateTime d) {
+  final l = d.toLocal();
+  return '${_months[l.month - 1]} ${l.day}, ${l.year}';
+}
+
+/// Nov 17 · 1:45 PM
+String fmtOrderDateTime(DateTime d) {
+  final l = d.toLocal();
+  final hour = l.hour % 12 == 0 ? 12 : l.hour % 12;
+  final minute = l.minute.toString().padLeft(2, '0');
+  final period = l.hour < 12 ? 'AM' : 'PM';
+  return '${_months[l.month - 1]} ${l.day} · $hour:$minute $period';
+}
+
+OrderStatus orderStatusFrom(String? v) => OrderStatus.values.firstWhere(
+      (s) => s.name == v,
+      orElse: () => OrderStatus.newOrder,
+    );
+
+IconData paymentIconFor(String method) => switch (method) {
+      'Cash' => Icons.payments_outlined,
+      'E-Transfer' => Icons.swap_horiz,
+      'Financing' => Icons.account_balance_outlined,
+      _ => Icons.credit_card,
+    };
+
+OrderLine orderLineFromMap(Map<String, dynamic> m) {
+  final qty = (m['qty'] as num?)?.toInt() ?? 1;
+  final details = (m['details'] as String?) ?? '';
+  final IconData icon = details.contains('Pillows')
+      ? Icons.airline_seat_flat_outlined
+      : details.contains('Protectors')
+          ? Icons.shield_outlined
+          : Icons.bed_outlined;
+  return OrderLine(
+    name: (m['name'] as String?) ?? '',
+    details: 'Qty: $qty · $details',
+    price: ((m['unitCents'] as num?)?.toInt() ?? 0) / 100,
+    icon: icon,
+    qty: qty,
+    productId: (m['productId'] as String?) ?? '',
+    sku: (m['sku'] as String?) ?? '',
+  );
+}
+
+PaymentRecord paymentFromMap(String id, Map<String, dynamic> m, DateTime at) {
+  final method = (m['method'] as String?) ?? 'Cash';
+  final reference = (m['reference'] as String?) ?? '';
+  return PaymentRecord(
+    id: id,
+    method: reference.isEmpty ? method : '$method · $reference',
+    dateLabel: fmtOrderDateTime(at),
+    kind: (m['kind'] as String?) ?? 'Payment',
+    amount: ((m['amountCents'] as num?)?.toInt() ?? 0) / 100,
+    icon: paymentIconFor(method),
+    statusLabel: 'Recorded',
+  );
+}
+
+/// The custom-build specification of an order (null for a standard order).
+CustomSpec? specFromMap(Map<String, dynamic> order, OrderStatus status) {
+  if (order['isCustom'] != true || order['spec'] is! Map) return null;
+  final s = Map<String, dynamic>.from(order['spec'] as Map);
+  final w = (s['width'] as String?) ?? '';
+  final l = (s['length'] as String?) ?? '';
+  final a = (s['angle'] as String?) ?? '';
+  final t = (s['thickness'] as String?) ?? '';
+  return CustomSpec(
+    dimensions: (w.isNotEmpty && l.isNotEmpty) ? '$w" × $l"' : '—',
+    dimensionsNote: '',
+    cutAngle: a.isEmpty ? '—' : '$a°',
+    cutNote: '',
+    thickness: t.isEmpty ? '—' : '$t in',
+    notes: (s['notes'] as String?) ?? '',
+    facility: '',
+    progress: status.label,
+  );
+}
+
+String _specSummary(Map? spec) {
+  if (spec == null) return 'Custom specs pending';
+  final w = (spec['width'] as String?) ?? '';
+  final l = (spec['length'] as String?) ?? '';
+  final a = (spec['angle'] as String?) ?? '';
+  final parts = <String>[
+    if (w.isNotEmpty && l.isNotEmpty) '$w" × $l"',
+    if (a.isNotEmpty) '$a° cut',
+  ];
+  return parts.isEmpty ? 'Custom specs pending' : parts.join(' · ');
+}
+
+/// Builds one card of the Orders list from a Firestore order document.
+OrderItem orderItemFromMap(
+  String id,
+  Map<String, dynamic> m,
+  DateTime createdAt,
+) {
+  final lines = (m['lines'] as List?) ?? const [];
+  var product = 'Order';
+  if (lines.isNotEmpty) {
+    final first = lines.first as Map;
+    product = (first['name'] as String?) ?? 'Order';
+    if (lines.length > 1) product = '$product (+${lines.length - 1} more)';
+  }
+  final isCustom = m['isCustom'] == true;
+  final city = (m['customerCity'] as String?) ?? '';
+  final status = orderStatusFrom(m['status'] as String?);
+
+  final totalCents = (m['totalCents'] as num?)?.toInt() ?? 0;
+  final paidCents = (m['paidCents'] as num?)?.toInt() ?? 0;
+  final delivery = (m['deliveryDate'] as Timestamp?)?.toDate();
+  final next = (m['nextPaymentDate'] as Timestamp?)?.toDate();
+  final showNext =
+      next != null && status != OrderStatus.cancelled && paidCents < totalCents;
+
+  return OrderItem(
+    id: id,
+    number: (m['number'] as String?) ?? '',
+    product: product,
+    customer: (m['customerName'] as String?) ?? '',
+    city: city.isEmpty ? 'In store' : city,
+    status: status,
+    isCustom: isCustom,
+    dateLabel: delivery != null
+        ? 'Delivery ${fmtOrderDate(delivery)}'
+        : 'Placed ${fmtOrderDate(createdAt)}',
+    total: totalCents / 100,
+    paid: paidCents / 100,
+    footerIcon: isCustom ? Icons.straighten : Icons.person_outline,
+    footerText: isCustom
+        ? _specSummary(m['spec'] is Map ? m['spec'] as Map : null)
+        : 'Created by ${(m['createdByEmail'] as String?) ?? ''}',
+    footerRight: showNext ? 'Next payment ${fmtOrderDate(next)}' : null,
+    footerRightAccent: showNext,
+  );
 }

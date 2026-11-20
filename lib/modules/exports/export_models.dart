@@ -16,7 +16,7 @@ extension ExportDatasetInfo on ExportDataset {
     ExportDataset.inventory => 'SKUs, stock on hand, landed costs',
     ExportDataset.customers => 'Accounts, lifetime spend, notes',
     ExportDataset.purchases => 'Vendor ledger, open POs, receipts',
-    ExportDataset.audit => 'Immutable event history, PIN logins',
+        ExportDataset.audit => 'Every change, with who and when',
   };
 
   IconData get icon => switch (this) {
